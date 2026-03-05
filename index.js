@@ -147,8 +147,12 @@ client.on('interactionCreate', async (interaction) => {
     const thread = interaction.channel;
 
     // Get ticket type from embed to fetch correct staff
-    const messages = await thread.messages.fetch({ limit: 5 });
-    const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === interaction.client.user.id);
+    const messages = await thread.messages.fetch({ limit: 20 });
+    const ticketMessage = messages.find((m) =>
+      m.author.id === interaction.client.user.id &&
+      m.embeds.length > 0 &&
+      m.embeds[0]?.fields?.some(f => f.name === 'Ticket ID')
+    );
 
     if (!ticketMessage) {
       await interaction.reply({ content: 'Could not find ticket message.', flags: MessageFlags.Ephemeral });
@@ -232,13 +236,23 @@ client.on('interactionCreate', async (interaction) => {
     const thread = interaction.channel;
 
     // Get assignees from the ticket embed
-    const messages = await thread.messages.fetch({ limit: 5 });
-    const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === interaction.client.user.id);
+    const messages = await thread.messages.fetch({ limit: 20 });
+    const ticketMessage = messages.find((m) =>
+      m.author.id === interaction.client.user.id &&
+      m.embeds.length > 0 &&
+      m.embeds[0]?.fields?.some(f => f.name === 'Ticket ID')
+    );
 
     let assigneeIds = [];
     let ticketIdFromEmbed = null;
+
+    // Debug
+    console.log('Close ticket - ticketMessage found:', !!ticketMessage);
+
     if (ticketMessage) {
+      console.log('Embed fields:', ticketMessage.embeds[0]?.fields?.map(f => f.name));
       const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
+      console.log('Assigned To field:', assignedField?.value);
       if (assignedField) {
         const mentionRegex = /<@!?(\d+)>/g;
         let match;
@@ -252,6 +266,8 @@ client.on('interactionCreate', async (interaction) => {
         ticketIdFromEmbed = ticketIdField.value;
       }
     }
+
+    console.log('Assignee IDs found:', assigneeIds);
 
     if (assigneeIds.length === 0) {
       // No assignees, just close
@@ -570,9 +586,13 @@ client.on('interactionCreate', async (interaction) => {
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    // Get ticket message
-    const messages = await thread.messages.fetch({ limit: 5 });
-    const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === interaction.client.user.id);
+    // Get ticket message - search more messages and look for ticket embed
+    const messages = await thread.messages.fetch({ limit: 20 });
+    const ticketMessage = messages.find((m) =>
+      m.author.id === interaction.client.user.id &&
+      m.embeds.length > 0 &&
+      m.embeds[0]?.fields?.some(f => f.name === 'Ticket ID')
+    );
 
     if (!ticketMessage) {
       await interaction.editReply({ content: 'Could not find ticket message.' });
