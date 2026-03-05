@@ -12,8 +12,11 @@ function createModal(customId, title, fields) {
 
   const labelComponents = fields.map(field => {
     const label = new LabelBuilder()
-      .setLabel(field.label)
-      .setDescription(field.description || '');
+      .setLabel(field.label);
+
+    if (field.description) {
+      label.setDescription(field.description);
+    }
 
     if (field.type === 'select') {
       const selectMenu = new StringSelectMenuBuilder()
@@ -22,12 +25,13 @@ function createModal(customId, title, fields) {
         .setRequired(field.required ?? true);
 
       for (const option of field.options) {
-        selectMenu.addOptions(
-          new StringSelectMenuOptionBuilder()
-            .setLabel(option.label)
-            .setValue(option.value)
-            .setDescription(option.description || '')
-        );
+        const optionBuilder = new StringSelectMenuOptionBuilder()
+          .setLabel(option.label)
+          .setValue(option.value);
+        if (option.description) {
+          optionBuilder.setDescription(option.description);
+        }
+        selectMenu.addOptions(optionBuilder);
       }
       label.setStringSelectMenuComponent(selectMenu);
     } else {
@@ -49,9 +53,24 @@ function createModal(customId, title, fields) {
   return modal;
 }
 
+// Helper to create staff select field
+function createStaffField(staffOptions) {
+  if (!staffOptions || staffOptions.length === 0) {
+    return null;
+  }
+  return {
+    id: 'assigned_to',
+    label: 'Assign To',
+    description: 'Select staff to handle this ticket',
+    type: 'select',
+    placeholder: 'Select staff...',
+    options: staffOptions,
+  };
+}
+
 const modals = {
-  eta_ppo: () =>
-    createModal('modal_eta_ppo', 'ETA Ticket (PPO/PST)', [
+  eta_ppo: (staffOptions = []) => {
+    const fields = [
       {
         id: 'priority',
         label: 'Priority',
@@ -66,10 +85,14 @@ const modals = {
       { id: 'item_id', label: 'Item ID', description: 'Enter the item ID', placeholder: 'Enter item ID' },
       { id: 'order_id', label: 'Order ID', description: 'Enter the order ID', placeholder: 'Enter order ID' },
       { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
-    ]),
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_eta_ppo', 'ETA Ticket (PPO/PST)', fields);
+  },
 
-  eta_ureq: () =>
-    createModal('modal_eta_ureq', 'ETA Ticket (UREQ)', [
+  eta_ureq: (staffOptions = []) => {
+    const fields = [
       {
         id: 'priority',
         label: 'Priority',
@@ -83,43 +106,63 @@ const modals = {
       },
       { id: 'order_id', label: 'Order ID', description: 'Enter the order ID', placeholder: 'Enter order ID' },
       { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
-    ]),
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_eta_ureq', 'ETA Ticket (UREQ)', fields);
+  },
 
-  restock: () =>
-    createModal('modal_restock', 'Restock Ticket', [
-      { id: 'item_id', label: 'Item ID', placeholder: 'Enter item ID' },
-      { id: 'order_id', label: 'Order ID', placeholder: 'Enter order ID' },
-      { id: 'notes', label: 'Notes', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
-    ]),
+  restock: (staffOptions = []) => {
+    const fields = [
+      { id: 'item_id', label: 'Item ID', description: 'Enter the item ID', placeholder: 'Enter item ID' },
+      { id: 'order_id', label: 'Order ID', description: 'Enter the order ID', placeholder: 'Enter order ID' },
+      { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_restock', 'Restock Ticket', fields);
+  },
 
-  revive: () =>
-    createModal('modal_revive', 'Revive Ticket', [
-      { id: 'item_id', label: 'Item ID', placeholder: 'Enter item ID' },
-      { id: 'notes', label: 'Notes', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
-    ]),
+  revive: (staffOptions = []) => {
+    const fields = [
+      { id: 'item_id', label: 'Item ID', description: 'Enter the item ID', placeholder: 'Enter item ID' },
+      { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_revive', 'Revive Ticket', fields);
+  },
 
-  new_item: () =>
-    createModal('modal_new_item', 'New Item Request', [
-      { id: 'notes', label: 'Item Description', style: TextInputStyle.Paragraph, placeholder: 'Describe the item...' },
-      { id: 'link', label: 'Link (optional)', required: false, placeholder: 'https://...' },
-    ]),
+  new_item: (staffOptions = []) => {
+    const fields = [
+      { id: 'notes', label: 'Item Description', description: 'Describe the item you want', style: TextInputStyle.Paragraph, placeholder: 'Describe the item...' },
+      { id: 'link', label: 'Link (optional)', description: 'Provide a link if available', required: false, placeholder: 'https://...' },
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_new_item', 'New Item Request', fields);
+  },
 
-  kompen: () =>
-    createModal('modal_kompen', 'Kompensasi Ticket', [
-      { id: 'notes', label: 'Description', style: TextInputStyle.Paragraph, placeholder: 'Describe the defect/damage...' },
-    ]),
+  kompen: (staffOptions = []) => {
+    const fields = [
+      { id: 'notes', label: 'Description', description: 'Describe the defect or damage', style: TextInputStyle.Paragraph, placeholder: 'Describe the defect/damage...' },
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_kompen', 'Kompensasi Ticket', fields);
+  },
 };
 
 const closeTicketModal = () =>
   createModal('modal_close_ticket', 'Close Ticket', [
-    { id: 'rating', label: 'Rating (1-5)', placeholder: '1, 2, 3, 4, or 5', maxLength: 1 },
-    { id: 'feedback', label: 'Feedback', style: TextInputStyle.Paragraph, required: false, placeholder: 'How was your experience?' },
+    { id: 'rating', label: 'Rating (1-5)', description: 'Rate your experience from 1 to 5', placeholder: '1, 2, 3, 4, or 5', maxLength: 1 },
+    { id: 'feedback', label: 'Feedback', description: 'Share your feedback (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'How was your experience?' },
   ]);
 
 const createFeedbackModal = (feedbackId, assigneeId, assigneeName, current, total) =>
   createModal(`modal_feedback_${feedbackId}_${assigneeId}`, `Rate ${assigneeName} (${current}/${total})`, [
-    { id: 'rating', label: 'Rating (1-5)', placeholder: '1, 2, 3, 4, or 5', maxLength: 1 },
-    { id: 'feedback', label: 'Feedback', style: TextInputStyle.Paragraph, required: false, placeholder: `How was ${assigneeName}'s service?` },
+    { id: 'rating', label: 'Rating (1-5)', description: 'Rate this staff member from 1 to 5', placeholder: '1, 2, 3, 4, or 5', maxLength: 1 },
+    { id: 'feedback', label: 'Feedback', description: 'Share your feedback (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: `How was ${assigneeName}'s service?` },
   ]);
 
 module.exports = { modals, closeTicketModal, createFeedbackModal };

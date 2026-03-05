@@ -88,14 +88,143 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // Select menu
+  // Select menu - Ticket type selection
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_type_select') {
     const ticketType = interaction.values[0];
+    const modalId = `modal_${ticketType}`;
     const modalFn = modals[ticketType];
 
     if (modalFn) {
-      await interaction.showModal(modalFn());
+      // Fetch staff members for this ticket type
+      const staffMembers = new Map();
+
+      const userIds = TICKET_USERS[modalId] || [];
+      for (const userId of userIds) {
+        const member = await interaction.guild.members.fetch(userId).catch(() => null);
+        if (member && !member.user.bot) {
+          staffMembers.set(member.id, member);
+        }
+      }
+
+      const roleIds = TICKET_ROLES[modalId] || [];
+      for (const roleId of roleIds) {
+        const role = interaction.guild.roles.cache.get(roleId);
+        if (role && role.members.size > 0) {
+          role.members.forEach((member) => {
+            if (!member.user.bot) staffMembers.set(member.id, member);
+          });
+        }
+      }
+
+      if (staffMembers.size === 0 && roleIds.length > 0) {
+        try {
+          const fetched = await interaction.guild.members.fetch({ limit: 100 });
+          for (const roleId of roleIds) {
+            fetched.filter((m) => m.roles.cache.has(roleId) && !m.user.bot)
+              .forEach((member) => staffMembers.set(member.id, member));
+          }
+        } catch (e) {
+          console.log('Member fetch failed:', e.message);
+        }
+      }
+
+      // Convert to options for select menu
+      const staffOptions = Array.from(staffMembers.values())
+        .slice(0, 25)
+        .map((member) => ({
+          label: member.displayName,
+          value: member.id,
+          description: member.user.tag,
+        }));
+
+      await interaction.showModal(modalFn(staffOptions));
     }
+  }
+
+  // Button click - Edit Assignee
+  if (interaction.isButton() && interaction.customId.startsWith('edit_assignee_')) {
+    const threadId = interaction.customId.replace('edit_assignee_', '');
+    const thread = interaction.channel;
+
+    // Get ticket type from embed to fetch correct staff
+    const messages = await thread.messages.fetch({ limit: 5 });
+    const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === interaction.client.user.id);
+
+    if (!ticketMessage) {
+      await interaction.reply({ content: 'Could not find ticket message.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Get ticket type from title
+    const embedTitle = ticketMessage.embeds[0]?.title || '';
+    let modalId = null;
+    if (embedTitle.includes('PPO') || embedTitle.includes('PST')) modalId = 'modal_eta_ppo';
+    else if (embedTitle.includes('UREQ')) modalId = 'modal_eta_ureq';
+    else if (embedTitle.includes('Restock')) modalId = 'modal_restock';
+    else if (embedTitle.includes('Revive')) modalId = 'modal_revive';
+    else if (embedTitle.includes('New Item')) modalId = 'modal_new_item';
+    else if (embedTitle.includes('Kompensasi')) modalId = 'modal_kompen';
+
+    // Fetch staff members
+    const staffMembers = new Map();
+
+    const userIds = TICKET_USERS[modalId] || [];
+    for (const userId of userIds) {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member && !member.user.bot) {
+        staffMembers.set(member.id, member);
+      }
+    }
+
+    const roleIds = TICKET_ROLES[modalId] || [];
+    for (const roleId of roleIds) {
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    if (staffMembers.size === 0 && roleIds.length > 0) {
+      try {
+        const fetched = await interaction.guild.members.fetch({ limit: 100 });
+        for (const roleId of roleIds) {
+          fetched.filter((m) => m.roles.cache.has(roleId) && !m.user.bot)
+            .forEach((member) => staffMembers.set(member.id, member));
+        }
+      } catch (e) {
+        console.log('Member fetch failed:', e.message);
+      }
+    }
+
+    if (staffMembers.size === 0) {
+      await interaction.reply({ content: 'No staff available.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    const options = Array.from(staffMembers.values())
+      .slice(0, 25)
+      .map((member) => ({
+        label: member.displayName,
+        value: member.id,
+        description: member.user.tag,
+      }));
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`update_assignee_${threadId}`)
+      .setPlaceholder('Select new assignee...')
+      .setMinValues(1)
+      .setMaxValues(Math.min(options.length, 10))
+      .addOptions(options);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    await interaction.reply({
+      content: 'Select new assignee(s) for this ticket:',
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    });
   }
 
   // Button click - Close Ticket
@@ -107,6 +236,7 @@ client.on('interactionCreate', async (interaction) => {
     const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === interaction.client.user.id);
 
     let assigneeIds = [];
+    let ticketIdFromEmbed = null;
     if (ticketMessage) {
       const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
       if (assignedField) {
@@ -115,6 +245,11 @@ client.on('interactionCreate', async (interaction) => {
         while ((match = mentionRegex.exec(assignedField.value)) !== null) {
           assigneeIds.push(match[1]);
         }
+      }
+      // Get ticket ID from embed
+      const ticketIdField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Ticket ID');
+      if (ticketIdField) {
+        ticketIdFromEmbed = ticketIdField.value;
       }
     }
 
@@ -131,7 +266,7 @@ client.on('interactionCreate', async (interaction) => {
     pendingTickets.set(`feedback_${feedbackId}`, {
       threadId: thread.id,
       threadName: thread.name,
-      ticketId: ticketData?.ticketId || null,
+      ticketId: ticketIdFromEmbed || ticketData?.ticketId || thread.id,
       assigneeIds,
       currentIndex: 0,
       userId: interaction.user.id,
@@ -314,103 +449,27 @@ client.on('interactionCreate', async (interaction) => {
 
     // Ticket creation modals
     const fields = {};
+
     interaction.fields.fields.forEach((field) => {
-      fields[field.customId] = field.value;
+      // Type 3 = Select menu, Type 4 = Text input
+      if (field.type === 3 && field.values) {
+        fields[field.customId] = field.values[0];
+      } else if (field.type === 4 && field.value !== undefined) {
+        fields[field.customId] = field.value;
+      }
     });
 
-    // Get users for this ticket type
-    const staffMembers = new Map();
-
-    // Check for direct user IDs first
-    const userIds = TICKET_USERS[modalId] || [];
-    for (const userId of userIds) {
-      const member = await interaction.guild.members.fetch(userId).catch(() => null);
-      if (member && !member.user.bot) {
-        staffMembers.set(member.id, member);
-      }
-    }
-
-    // Check for role IDs
-    const roleIds = TICKET_ROLES[modalId] || [];
-    for (const roleId of roleIds) {
-      const role = interaction.guild.roles.cache.get(roleId);
-      if (role && role.members.size > 0) {
-        role.members.forEach((member) => {
-          if (!member.user.bot) staffMembers.set(member.id, member);
-        });
-      }
-    }
-
-    // If still empty from roles, try fetching
-    if (staffMembers.size === 0 && roleIds.length > 0) {
-      try {
-        const fetched = await interaction.guild.members.fetch({ limit: 100 });
-        for (const roleId of roleIds) {
-          fetched.filter((m) => m.roles.cache.has(roleId) && !m.user.bot)
-            .forEach((member) => staffMembers.set(member.id, member));
-        }
-      } catch (e) {
-        console.log('Member fetch failed:', e.message);
-      }
-    }
-
-    if (staffMembers.size === 0) {
-      await interaction.reply({ content: 'No staff available for this ticket type. Try again later.', flags: MessageFlags.Ephemeral });
+    // Check if staff was assigned in the modal
+    if (!fields.assigned_to) {
+      await interaction.reply({ content: 'Please select a staff member to assign.', flags: MessageFlags.Ephemeral });
       return;
     }
 
-    // Store pending ticket data
-    const ticketId = Date.now().toString(36);
-    pendingTickets.set(ticketId, {
-      modalId,
-      fields,
-      userId: interaction.user.id,
-      user: interaction.user,
-      guildId: interaction.guild.id,
-    });
-
-    // Create user select menu
-    const options = Array.from(staffMembers.values())
-      .slice(0, 25) // Discord max 25 options
-      .map((member) => ({
-        label: member.displayName,
-        value: member.id,
-        description: member.user.tag,
-      }));
-
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`assign_ticket_${ticketId}`)
-      .setPlaceholder('Select staff to assign...')
-      .setMinValues(1)
-      .setMaxValues(Math.min(options.length, 10))
-      .addOptions(options);
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-
-    await interaction.reply({
-      content: 'Select staff to assign to this ticket:',
-      components: [row],
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-
-  // User assignment select menu
-  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('assign_ticket_')) {
-    const ticketId = interaction.customId.replace('assign_ticket_', '');
-    const ticketData = pendingTickets.get(ticketId);
-
-    if (!ticketData) {
-      await interaction.reply({ content: 'Ticket expired. Please create a new one.', flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    pendingTickets.delete(ticketId);
-
-    // Defer the reply immediately to prevent interaction timeout
+    // Staff was selected in modal, create ticket directly
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const { modalId, fields, user } = ticketData;
-    const assignedUserIds = interaction.values;
+    const assignedUserIds = [fields.assigned_to];
+    const user = interaction.user;
 
     const embed = createTicketEmbed(modalId, fields, user);
     const channelId = getChannelForTicket(modalId);
@@ -457,7 +516,6 @@ client.on('interactionCreate', async (interaction) => {
       assigned_to: JSON.stringify(assignedUserIds.map(id => ({ id, name: '' }))),
     };
 
-    // Remove null fields that might cause API issues
     if (!ticketDbData.item_id) delete ticketDbData.item_id;
     if (!ticketDbData.order_id) delete ticketDbData.order_id;
     if (!ticketDbData.notes) delete ticketDbData.notes;
@@ -469,26 +527,30 @@ client.on('interactionCreate', async (interaction) => {
       console.error('Failed to insert ticket into database:', err.message);
     }
 
-    // Cache the ticket data
     activeTickets.set(thread.id, {
       ticketId: thread.id,
       ...ticketDbData,
     });
 
-    // Add assigned staff to embed
+    // Add ticket ID and assigned staff to embed
+    embed.addFields({ name: 'Ticket ID', value: thread.id, inline: true });
     const assignedMentions = assignedUserIds.map((id) => `<@${id}>`).join(', ');
     embed.addFields({ name: 'Assigned To', value: assignedMentions });
+
+    const editButton = new ButtonBuilder()
+      .setCustomId(`edit_assignee_${thread.id}`)
+      .setLabel('Edit Assignee')
+      .setStyle(ButtonStyle.Secondary);
 
     const closeButton = new ButtonBuilder()
       .setCustomId(`close_ticket_${user.id}`)
       .setLabel('Close Ticket')
       .setStyle(ButtonStyle.Danger);
 
-    const row = new ActionRowBuilder().addComponents(closeButton);
+    const row = new ActionRowBuilder().addComponents(editButton, closeButton);
 
     await thread.send({ embeds: [embed], components: [row] });
 
-    // Add ticket creator and assigned users to thread
     await thread.members.add(user.id);
     for (const userId of assignedUserIds) {
       await thread.members.add(userId).catch(() => {});
@@ -498,6 +560,95 @@ client.on('interactionCreate', async (interaction) => {
       content: `Ticket created: ${thread}`,
       components: [],
     });
+  }
+
+  // Update assignee select menu
+  if (interaction.isStringSelectMenu() && interaction.customId.startsWith('update_assignee_')) {
+    const threadId = interaction.customId.replace('update_assignee_', '');
+    const thread = interaction.channel;
+    const newAssigneeIds = interaction.values;
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    // Get ticket message
+    const messages = await thread.messages.fetch({ limit: 5 });
+    const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === interaction.client.user.id);
+
+    if (!ticketMessage) {
+      await interaction.editReply({ content: 'Could not find ticket message.' });
+      return;
+    }
+
+    // Get old assignees to remove from thread
+    const oldAssigneeIds = [];
+    const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
+    if (assignedField) {
+      const mentionRegex = /<@!?(\d+)>/g;
+      let match;
+      while ((match = mentionRegex.exec(assignedField.value)) !== null) {
+        oldAssigneeIds.push(match[1]);
+      }
+    }
+
+    // Get ticket creator from embed
+    const creatorId = ticketMessage.embeds[0]?.author?.name?.match(/\((\d+)\)$/)?.[1] ||
+      activeTickets.get(thread.id)?.created_by;
+
+    // Update embed
+    const oldEmbed = ticketMessage.embeds[0];
+    const newEmbed = EmbedBuilder.from(oldEmbed);
+
+    // Update Assigned To field
+    const newAssignedMentions = newAssigneeIds.map((id) => `<@${id}>`).join(', ');
+    const fieldIndex = newEmbed.data.fields?.findIndex((f) => f.name === 'Assigned To');
+    if (fieldIndex !== -1) {
+      newEmbed.data.fields[fieldIndex].value = newAssignedMentions;
+    }
+
+    // Recreate buttons
+    const editButton = new ButtonBuilder()
+      .setCustomId(`edit_assignee_${threadId}`)
+      .setLabel('Edit Assignee')
+      .setStyle(ButtonStyle.Secondary);
+
+    const closeButton = new ButtonBuilder()
+      .setCustomId(`close_ticket_${creatorId || interaction.user.id}`)
+      .setLabel('Close Ticket')
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(editButton, closeButton);
+
+    await ticketMessage.edit({ embeds: [newEmbed], components: [row] });
+
+    // Update database
+    try {
+      await db.updateRows('purchasing_tickets',
+        { id: threadId },
+        { assigned_to: JSON.stringify(newAssigneeIds.map(id => ({ id, name: '' }))) }
+      );
+    } catch (err) {
+      console.error('Failed to update assignee in database:', err.message);
+    }
+
+    // Remove old assignees from thread (except if they're new assignees too)
+    for (const oldId of oldAssigneeIds) {
+      if (!newAssigneeIds.includes(oldId)) {
+        await thread.members.remove(oldId).catch(() => {});
+      }
+    }
+
+    // Add new assignees to thread
+    for (const newId of newAssigneeIds) {
+      await thread.members.add(newId).catch(() => {});
+    }
+
+    // Update active tickets cache
+    const ticketData = activeTickets.get(thread.id);
+    if (ticketData) {
+      ticketData.assigned_to = JSON.stringify(newAssigneeIds.map(id => ({ id, name: '' })));
+    }
+
+    await interaction.editReply({ content: 'Assignee updated successfully!' });
   }
 });
 
@@ -599,13 +750,18 @@ async function restoreButtons(client) {
         const ticketMessage = messages.find((m) => m.embeds.length > 0 && m.author.id === client.user.id);
 
         if (ticketMessage) {
-          // Re-render the message with the close button
+          // Re-render the message with edit and close buttons
+          const editButton = new ButtonBuilder()
+            .setCustomId(`edit_assignee_${ticket.id}`)
+            .setLabel('Edit Assignee')
+            .setStyle(ButtonStyle.Secondary);
+
           const closeButton = new ButtonBuilder()
             .setCustomId(`close_ticket_${ticket.created_by}`)
             .setLabel('Close Ticket')
             .setStyle(ButtonStyle.Danger);
 
-          const row = new ActionRowBuilder().addComponents(closeButton);
+          const row = new ActionRowBuilder().addComponents(editButton, closeButton);
 
           await ticketMessage.edit({
             embeds: ticketMessage.embeds,
