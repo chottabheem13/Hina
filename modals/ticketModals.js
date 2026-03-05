@@ -2,23 +2,49 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  ActionRowBuilder,
+  LabelBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } = require('discord.js');
 
 function createModal(customId, title, fields) {
   const modal = new ModalBuilder().setCustomId(customId).setTitle(title);
 
-  for (const field of fields) {
-    const textInput = new TextInputBuilder()
-      .setCustomId(field.id)
+  const labelComponents = fields.map(field => {
+    const label = new LabelBuilder()
       .setLabel(field.label)
-      .setStyle(field.style || TextInputStyle.Short)
-      .setRequired(field.required ?? true)
-      .setPlaceholder(field.placeholder || '');
+      .setDescription(field.description || '');
 
-    if (field.maxLength) textInput.setMaxLength(field.maxLength);
-    modal.addComponents(new ActionRowBuilder().addComponents(textInput));
-  }
+    if (field.type === 'select') {
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(field.id)
+        .setPlaceholder(field.placeholder || 'Make a selection')
+        .setRequired(field.required ?? true);
+
+      for (const option of field.options) {
+        selectMenu.addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel(option.label)
+            .setValue(option.value)
+            .setDescription(option.description || '')
+        );
+      }
+      label.setStringSelectMenuComponent(selectMenu);
+    } else {
+      const textInput = new TextInputBuilder()
+        .setCustomId(field.id)
+        .setPlaceholder(field.placeholder || '')
+        .setRequired(field.required ?? true)
+        .setStyle(field.style || TextInputStyle.Short);
+
+      if (field.maxLength) textInput.setMaxLength(field.maxLength);
+      label.setTextInputComponent(textInput);
+    }
+
+    return label;
+  });
+
+  modal.addLabelComponents(...labelComponents);
 
   return modal;
 }
@@ -26,17 +52,37 @@ function createModal(customId, title, fields) {
 const modals = {
   eta_ppo: () =>
     createModal('modal_eta_ppo', 'ETA Ticket (PPO/PST)', [
-      { id: 'priority', label: 'Priority (urgent/normal)', placeholder: 'urgent or normal' },
-      { id: 'item_id', label: 'Item ID', placeholder: 'Enter item ID' },
-      { id: 'order_id', label: 'Order ID', placeholder: 'Enter order ID' },
-      { id: 'notes', label: 'Notes', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
+      {
+        id: 'priority',
+        label: 'Priority',
+        description: 'Select the priority level for this request',
+        type: 'select',
+        placeholder: 'Select priority',
+        options: [
+          { label: 'Normal', value: 'normal', description: 'Standard priority' },
+          { label: 'Urgent', value: 'urgent', description: 'High priority' },
+        ]
+      },
+      { id: 'item_id', label: 'Item ID', description: 'Enter the item ID', placeholder: 'Enter item ID' },
+      { id: 'order_id', label: 'Order ID', description: 'Enter the order ID', placeholder: 'Enter order ID' },
+      { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
     ]),
 
   eta_ureq: () =>
     createModal('modal_eta_ureq', 'ETA Ticket (UREQ)', [
-      { id: 'priority', label: 'Priority (urgent/normal)', placeholder: 'urgent or normal' },
-      { id: 'order_id', label: 'Order ID', placeholder: 'Enter order ID' },
-      { id: 'notes', label: 'Notes', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
+      {
+        id: 'priority',
+        label: 'Priority',
+        description: 'Select the priority level for this request',
+        type: 'select',
+        placeholder: 'Select priority',
+        options: [
+          { label: 'Normal', value: 'normal', description: 'Standard priority' },
+          { label: 'Urgent', value: 'urgent', description: 'High priority' },
+        ]
+      },
+      { id: 'order_id', label: 'Order ID', description: 'Enter the order ID', placeholder: 'Enter order ID' },
+      { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional notes...' },
     ]),
 
   restock: () =>

@@ -153,7 +153,22 @@ client.on('interactionCreate', async (interaction) => {
 
     const pendingFeedback = pendingTickets.get(`feedback_${feedbackId}`);
     if (!pendingFeedback) {
-      await interaction.reply({ content: 'Feedback session expired.', flags: MessageFlags.Ephemeral });
+      await interaction.reply({ content: 'Feedback session expired. Closing ticket...', flags: MessageFlags.Ephemeral });
+
+      // Remove all members from thread and archive it
+      const thread = interaction.channel;
+      if (thread?.isThread()) {
+        const members = await thread.members.fetch().catch(() => null);
+        if (members) {
+          for (const [memberId] of members) {
+            if (memberId !== interaction.client.user.id) {
+              await thread.members.remove(memberId).catch(() => {});
+            }
+          }
+        }
+        await thread.setArchived(true).catch(() => {});
+        activeTickets.delete(thread.id);
+      }
       return;
     }
 
@@ -182,7 +197,22 @@ client.on('interactionCreate', async (interaction) => {
 
       const pendingFeedback = pendingTickets.get(`feedback_${feedbackId}`);
       if (!pendingFeedback) {
-        await interaction.reply({ content: 'Feedback session expired.', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: 'Feedback session expired. Closing ticket...', flags: MessageFlags.Ephemeral });
+
+        // Remove all members from thread and archive it
+        const thread = interaction.channel;
+        if (thread?.isThread()) {
+          const members = await thread.members.fetch().catch(() => null);
+          if (members) {
+            for (const [memberId] of members) {
+              if (memberId !== interaction.client.user.id) {
+                await thread.members.remove(memberId).catch(() => {});
+              }
+            }
+          }
+          await thread.setArchived(true).catch(() => {});
+          activeTickets.delete(thread.id);
+        }
         return;
       }
 
