@@ -340,11 +340,11 @@ client.on('interactionCreate', async (interaction) => {
         if (members) {
           for (const [memberId] of members) {
             if (memberId !== interaction.client.user.id) {
-              await thread.members.remove(memberId).catch(() => {});
+              await thread.members.remove(memberId).catch(() => { });
             }
           }
         }
-        await thread.setArchived(true).catch(() => {});
+        await thread.setArchived(true).catch(() => { });
         activeTickets.delete(thread.id);
       }
       return;
@@ -384,11 +384,11 @@ client.on('interactionCreate', async (interaction) => {
           if (members) {
             for (const [memberId] of members) {
               if (memberId !== interaction.client.user.id) {
-                await thread.members.remove(memberId).catch(() => {});
+                await thread.members.remove(memberId).catch(() => { });
               }
             }
           }
-          await thread.setArchived(true).catch(() => {});
+          await thread.setArchived(true).catch(() => { });
           activeTickets.delete(thread.id);
         }
         return;
@@ -488,7 +488,7 @@ client.on('interactionCreate', async (interaction) => {
         const members = await thread.members.fetch();
         for (const [memberId] of members) {
           if (memberId !== interaction.client.user.id) {
-            await thread.members.remove(memberId).catch(() => {});
+            await thread.members.remove(memberId).catch(() => { });
           }
         }
 
@@ -608,7 +608,7 @@ client.on('interactionCreate', async (interaction) => {
 
     await thread.members.add(user.id);
     for (const userId of assignedUserIds) {
-      await thread.members.add(userId).catch(() => {});
+      await thread.members.add(userId).catch(() => { });
     }
 
     await interaction.editReply({
@@ -692,13 +692,13 @@ client.on('interactionCreate', async (interaction) => {
     // Remove old assignees from thread (except if they're new assignees too)
     for (const oldId of oldAssigneeIds) {
       if (!newAssigneeIds.includes(oldId)) {
-        await thread.members.remove(oldId).catch(() => {});
+        await thread.members.remove(oldId).catch(() => { });
       }
     }
 
     // Add new assignees to thread
     for (const newId of newAssigneeIds) {
-      await thread.members.add(newId).catch(() => {});
+      await thread.members.add(newId).catch(() => { });
     }
 
     // Update active tickets cache
@@ -742,7 +742,7 @@ function getChannelForTicket(modalId) {
     modal_eta_ppo: process.env.CHANNEL_PPO,
     modal_eta_ureq: process.env.CHANNEL_UREQ,
     modal_restock: process.env.CHANNEL_PPO,
-    modal_revive: '912183510750617601',
+    modal_revive: process.env.CHANNEL_REVIVE,
     modal_new_item_preorder: process.env.CHANNEL_PPO,
     modal_new_item_ureq: process.env.CHANNEL_UREQ,
     modal_kompen: process.env.CHANNEL_KOMPEN,
