@@ -742,7 +742,7 @@ function getChannelForTicket(modalId) {
     modal_eta_ppo: process.env.CHANNEL_PPO,
     modal_eta_ureq: process.env.CHANNEL_UREQ,
     modal_restock: process.env.CHANNEL_PPO,
-    modal_revive: process.env.CHANNEL_PPO,
+    modal_revive: '912183510750617601',
     modal_new_item_preorder: process.env.CHANNEL_PPO,
     modal_new_item_ureq: process.env.CHANNEL_UREQ,
     modal_kompen: process.env.CHANNEL_KOMPEN,
