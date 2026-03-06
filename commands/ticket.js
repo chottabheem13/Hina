@@ -10,7 +10,8 @@ const TICKET_TYPES = [
   { label: 'ETA (UREQ)', value: 'eta_ureq', description: 'Check ETA for UREQ orders' },
   { label: 'Restock', value: 'restock', description: 'Check restock status' },
   { label: 'Revive', value: 'revive', description: 'Check revive/late preorder' },
-  { label: 'New Item', value: 'new_item', description: 'Request new pre-order' },
+  { label: 'New Item (Pre-order)', value: 'new_item_preorder', description: 'Request new pre-order item' },
+  { label: 'New Item (Unique Request)', value: 'new_item_ureq', description: 'Request unique request item' },
   { label: 'Kompensasi', value: 'kompen', description: 'Report defect/damage' },
 ];
 

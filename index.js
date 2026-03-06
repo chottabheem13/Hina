@@ -31,9 +31,10 @@ const activeTickets = new Map();
 const TICKET_ROLES = {
   modal_eta_ppo: ['1300285037241045073'],
   modal_eta_ureq: ['1336223205601316936'],
-  modal_revive: ['1300285037241045073', '1337705127703871488'],
+  modal_revive: ['1300285037241045073', '1337705127703871488', '1336223205601316936'],
   modal_restock: ['1337705127703871488'],
-  modal_new_item: ['1300285037241045073'],
+  modal_new_item_preorder: ['1300285037241045073'],
+  modal_new_item_ureq: ['1336223205601316936'],
 };
 
 // User IDs for specific ticket types (not roles)
@@ -146,7 +147,7 @@ client.on('interactionCreate', async (interaction) => {
     const threadId = interaction.customId.replace('edit_assignee_', '');
     const thread = interaction.channel;
 
-    // Get ticket type from embed to fetch correct staff
+    // Get ticket info to validate creator
     const messages = await thread.messages.fetch({ limit: 20 });
     const ticketMessage = messages.find((m) =>
       m.author.id === interaction.client.user.id &&
@@ -159,14 +160,28 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
+    // Get ticket creator from embed or cache
+    const creatorId = ticketMessage.embeds[0]?.author?.name?.match(/\((\d+)\)$/)?.[1] ||
+      activeTickets.get(thread.id)?.created_by;
+
+    // Check if the user is the ticket creator
+    if (creatorId && interaction.user.id !== creatorId) {
+      await interaction.reply({
+        content: '❌ Only the ticket creator can edit assignees.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     // Get ticket type from title
     const embedTitle = ticketMessage.embeds[0]?.title || '';
     let modalId = null;
     if (embedTitle.includes('PPO') || embedTitle.includes('PST')) modalId = 'modal_eta_ppo';
-    else if (embedTitle.includes('UREQ')) modalId = 'modal_eta_ureq';
+    else if (embedTitle.includes('UREQ') && embedTitle.includes('ETA')) modalId = 'modal_eta_ureq';
     else if (embedTitle.includes('Restock')) modalId = 'modal_restock';
     else if (embedTitle.includes('Revive')) modalId = 'modal_revive';
-    else if (embedTitle.includes('New Item')) modalId = 'modal_new_item';
+    else if (embedTitle.includes('Pre-order')) modalId = 'modal_new_item_preorder';
+    else if (embedTitle.includes('Unique Request')) modalId = 'modal_new_item_ureq';
     else if (embedTitle.includes('Kompensasi')) modalId = 'modal_kompen';
 
     // Fetch staff members
@@ -234,6 +249,18 @@ client.on('interactionCreate', async (interaction) => {
   // Button click - Close Ticket
   if (interaction.isButton() && interaction.customId.startsWith('close_ticket_')) {
     const thread = interaction.channel;
+
+    // Extract creator ID from button custom ID
+    const creatorId = interaction.customId.replace('close_ticket_', '');
+
+    // Check if the user is the ticket creator
+    if (creatorId && interaction.user.id !== creatorId) {
+      await interaction.reply({
+        content: '❌ Only the ticket creator can close this ticket.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
 
     // Get assignees from the ticket embed
     const messages = await thread.messages.fetch({ limit: 20 });
@@ -367,8 +394,19 @@ client.on('interactionCreate', async (interaction) => {
         return;
       }
 
-      const rating = interaction.fields.getTextInputValue('rating');
-      const feedback = interaction.fields.getTextInputValue('feedback');
+      // Get field values (rating is select menu, feedback is text input)
+      const fields = {};
+      interaction.fields.fields.forEach((field) => {
+        // Type 3 = Select menu, Type 4 = Text input
+        if (field.type === 3 && field.values) {
+          fields[field.customId] = field.values[0];
+        } else if (field.type === 4 && field.value !== undefined) {
+          fields[field.customId] = field.value;
+        }
+      });
+
+      const rating = fields.rating;
+      const feedback = fields.feedback || '';
 
       // Get assignee name for database
       const assignee = await interaction.guild.members.fetch(assigneeId).catch(() => null);
@@ -502,7 +540,8 @@ client.on('interactionCreate', async (interaction) => {
       modal_eta_ureq: 'ETA-UREQ',
       modal_restock: 'RESTOCK',
       modal_revive: 'REVIVE',
-      modal_new_item: 'NEW',
+      modal_new_item_preorder: 'NEW-PO',
+      modal_new_item_ureq: 'NEW-UREQ',
       modal_kompen: 'KOMPEN',
     };
     const nameParts = [typeShort[modalId]];
@@ -678,7 +717,8 @@ function createTicketEmbed(modalId, fields, user) {
     modal_eta_ureq: 'ETA (UREQ)',
     modal_restock: 'Restock',
     modal_revive: 'Revive',
-    modal_new_item: 'New Item',
+    modal_new_item_preorder: 'New Item (Pre-order)',
+    modal_new_item_ureq: 'New Item (Unique Request)',
     modal_kompen: 'Kompensasi',
   };
 
@@ -703,7 +743,8 @@ function getChannelForTicket(modalId) {
     modal_eta_ureq: process.env.CHANNEL_UREQ,
     modal_restock: process.env.CHANNEL_PPO,
     modal_revive: process.env.CHANNEL_PPO,
-    modal_new_item: process.env.CHANNEL_PPO,
+    modal_new_item_preorder: process.env.CHANNEL_PPO,
+    modal_new_item_ureq: process.env.CHANNEL_UREQ,
     modal_kompen: process.env.CHANNEL_KOMPEN,
   };
   return channelMap[modalId];
