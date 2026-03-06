@@ -13,7 +13,7 @@ const {
   MessageFlags,
 } = require('discord.js');
 
-const ticketCommand = require('./commands/ticket');
+const ticketCommand = require('./commands/purchasing-ticket');
 const { modals, createFeedbackModal } = require('./modals/ticketModals');
 const db = require('./database/db');
 
@@ -29,17 +29,16 @@ const activeTickets = new Map();
 
 // Role IDs for each ticket type
 const TICKET_ROLES = {
-  modal_eta_ppo: ['1300285037241045073'],
+  modal_eta_ppo: ['1300285037241045073', '1337705127703871488'],
   modal_eta_ureq: ['1336223205601316936'],
   modal_revive: ['1300285037241045073', '1337705127703871488', '1336223205601316936'],
-  modal_restock: ['1337705127703871488'],
-  modal_new_item_preorder: ['1300285037241045073'],
-  modal_new_item_ureq: ['1336223205601316936'],
+  modal_restock: ['1204414544550821978'],
 };
 
 // User IDs for specific ticket types (not roles)
 const TICKET_USERS = {
   modal_kompen: ['392321900577161219', '421215427696394241'],
+  modal_new_item_preorder: ['1155539420871667824', '392321900577161219', '651993926986629140', '628815933208657921'],
 };
 
 client.commands = new Collection();
@@ -181,7 +180,6 @@ client.on('interactionCreate', async (interaction) => {
     else if (embedTitle.includes('Restock')) modalId = 'modal_restock';
     else if (embedTitle.includes('Revive')) modalId = 'modal_revive';
     else if (embedTitle.includes('Pre-order')) modalId = 'modal_new_item_preorder';
-    else if (embedTitle.includes('Unique Request')) modalId = 'modal_new_item_ureq';
     else if (embedTitle.includes('Kompensasi')) modalId = 'modal_kompen';
 
     // Fetch staff members
@@ -432,7 +430,7 @@ client.on('interactionCreate', async (interaction) => {
       const feedbackChannel = interaction.guild.channels.cache.get(process.env.CHANNEL_FEEDBACK);
       if (feedbackChannel) {
         const feedbackEmbed = new EmbedBuilder()
-          .setTitle('Ticket Feedback')
+          .setTitle('Purchasing-Ticket Feedback')
           .setColor(0x808080)
           .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
           .addFields(
@@ -541,7 +539,6 @@ client.on('interactionCreate', async (interaction) => {
       modal_restock: 'RESTOCK',
       modal_revive: 'REVIVE',
       modal_new_item_preorder: 'NEW-PO',
-      modal_new_item_ureq: 'NEW-UREQ',
       modal_kompen: 'KOMPEN',
     };
     const nameParts = [typeShort[modalId]];
@@ -718,7 +715,6 @@ function createTicketEmbed(modalId, fields, user) {
     modal_restock: 'Restock',
     modal_revive: 'Revive',
     modal_new_item_preorder: 'New Item (Pre-order)',
-    modal_new_item_ureq: 'New Item (Unique Request)',
     modal_kompen: 'Kompensasi',
   };
 
@@ -741,10 +737,9 @@ function getChannelForTicket(modalId) {
   const channelMap = {
     modal_eta_ppo: process.env.CHANNEL_PPO,
     modal_eta_ureq: process.env.CHANNEL_UREQ,
-    modal_restock: process.env.CHANNEL_PPO,
+    modal_restock: process.env.CHANNEL_PST,
     modal_revive: process.env.CHANNEL_REVIVE,
     modal_new_item_preorder: process.env.CHANNEL_PPO,
-    modal_new_item_ureq: process.env.CHANNEL_UREQ,
     modal_kompen: process.env.CHANNEL_KOMPEN,
   };
   return channelMap[modalId];

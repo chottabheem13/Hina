@@ -6,18 +6,17 @@ const {
 } = require('discord.js');
 
 const TICKET_TYPES = [
-  { label: 'ETA (PPO/PST)', value: 'eta_ppo', description: 'Check ETA of order/item' },
-  { label: 'ETA (UREQ)', value: 'eta_ureq', description: 'Check ETA for UREQ orders' },
-  { label: 'Restock', value: 'restock', description: 'Check restock status' },
-  { label: 'Revive', value: 'revive', description: 'Check revive/late preorder' },
-  { label: 'New Item (Pre-order)', value: 'new_item_preorder', description: 'Request new pre-order item' },
-  { label: 'New Item (Unique Request)', value: 'new_item_ureq', description: 'Request unique request item' },
-  { label: 'Kompensasi', value: 'kompen', description: 'Report defect/damage' },
+  { label: 'ETA (PO)', value: 'eta_ppo', description: 'Tolong cek Estimasi Order / Item (Pre-order)' },
+  { label: 'ETA (UREQ)', value: 'eta_ureq', description: 'Tolong cek Estimasi Unique Request user dong' },
+  { label: 'Restock', value: 'restock', description: 'Tolong cek Itemnya bisa di Restock kah?' },
+  { label: 'Revive', value: 'revive', description: 'Tolong cek bisa di Revive / Late-PO kah?' },
+  { label: 'New Item (Pre-order)', value: 'new_item_preorder', description: 'Mau Request Kompre Item terbaru dong' },
+  { label: 'Kompensasi', value: 'kompen', description: 'Mau laporan ada cacat nih di item yang diorder user' },
 ];
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('ticket')
+    .setName('purchasing-ticket')
     .setDescription('Create a purchasing ticket'),
 
   async execute(interaction) {

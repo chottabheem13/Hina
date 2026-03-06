@@ -74,9 +74,10 @@ const modals = {
       {
         id: 'priority',
         label: 'Priority',
-        description: 'Select the priority level for this request',
+        description: 'Select the priority level (optional, defaults to Normal)',
         type: 'select',
-        placeholder: 'Select priority',
+        placeholder: 'Normal',
+        required: false,
         options: [
           { label: 'Normal', value: 'normal', description: 'Standard priority' },
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
@@ -88,7 +89,7 @@ const modals = {
     ];
     const staffField = createStaffField(staffOptions);
     if (staffField) fields.push(staffField);
-    return createModal('modal_eta_ppo', 'ETA Ticket (PPO/PST)', fields);
+    return createModal('modal_eta_ppo', 'Purchasing Ticket - ETA (General)', fields);
   },
 
   eta_ureq: (staffOptions = []) => {
@@ -96,9 +97,10 @@ const modals = {
       {
         id: 'priority',
         label: 'Priority',
-        description: 'Select the priority level for this request',
+        description: 'Select the priority level (optional, defaults to Normal)',
         type: 'select',
-        placeholder: 'Select priority',
+        placeholder: 'Normal',
+        required: false,
         options: [
           { label: 'Normal', value: 'normal', description: 'Standard priority' },
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
@@ -109,7 +111,7 @@ const modals = {
     ];
     const staffField = createStaffField(staffOptions);
     if (staffField) fields.push(staffField);
-    return createModal('modal_eta_ureq', 'ETA Ticket (UREQ)', fields);
+    return createModal('modal_eta_ureq', 'Purchasing Ticket - ETA (UREQ)', fields);
   },
 
   restock: (staffOptions = []) => {
@@ -117,9 +119,10 @@ const modals = {
       {
         id: 'priority',
         label: 'Priority',
-        description: 'Select the priority level for this request',
+        description: 'Select the priority level (optional, defaults to Normal)',
         type: 'select',
-        placeholder: 'Select priority',
+        placeholder: 'Normal',
+        required: false,
         options: [
           { label: 'Normal', value: 'normal', description: 'Standard priority' },
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
@@ -131,7 +134,7 @@ const modals = {
     ];
     const staffField = createStaffField(staffOptions);
     if (staffField) fields.push(staffField);
-    return createModal('modal_restock', 'Restock Ticket', fields);
+    return createModal('modal_restock', 'Purchasing Ticket - Restock Request', fields);
   },
 
   revive: (staffOptions = []) => {
@@ -141,7 +144,7 @@ const modals = {
     ];
     const staffField = createStaffField(staffOptions);
     if (staffField) fields.push(staffField);
-    return createModal('modal_revive', 'Revive Ticket', fields);
+    return createModal('modal_revive', 'Purchasing Ticket - Revive', fields);
   },
 
   new_item_preorder: (staffOptions = []) => {
@@ -151,37 +154,30 @@ const modals = {
     ];
     const staffField = createStaffField(staffOptions);
     if (staffField) fields.push(staffField);
-    return createModal('modal_new_item_preorder', 'New Item (Pre-order)', fields);
+    return createModal('modal_new_item_preorder', 'Purchasing Ticket - New DB Request', fields);
   },
 
-  new_item_ureq: (staffOptions = []) => {
-    const fields = [
-      { id: 'notes', label: 'Item Description', description: 'Describe the unique item you want', style: TextInputStyle.Paragraph, placeholder: 'Describe the item...' },
-      { id: 'link', label: 'Link (optional)', description: 'Provide a link if available', required: false, placeholder: 'https://...' },
-    ];
-    const staffField = createStaffField(staffOptions);
-    if (staffField) fields.push(staffField);
-    return createModal('modal_new_item_ureq', 'New Item (Unique Request)', fields);
-  },
 
   kompen: (staffOptions = []) => {
     const fields = [
       {
         id: 'priority',
         label: 'Priority',
-        description: 'Select the priority level for this request',
+        description: 'Select the priority level (optional, defaults to Normal)',
         type: 'select',
-        placeholder: 'Select priority',
+        placeholder: 'Normal',
+        required: false,
         options: [
           { label: 'Normal', value: 'normal', description: 'Standard priority' },
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
+      { id: 'order_id', label: 'Order ID', description: 'Enter the order ID', placeholder: 'Enter order ID' },
       { id: 'notes', label: 'Description', description: 'Describe the defect or damage', style: TextInputStyle.Paragraph, placeholder: 'Describe the defect/damage...' },
     ];
     const staffField = createStaffField(staffOptions);
     if (staffField) fields.push(staffField);
-    return createModal('modal_kompen', 'Kompensasi Ticket', fields);
+    return createModal('modal_kompen', 'Purchasing Ticket - Kompensasi', fields);
   },
 };
 
