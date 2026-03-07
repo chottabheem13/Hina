@@ -429,12 +429,13 @@ client.on('interactionCreate', async (interaction) => {
       // Send feedback for this assignee
       const feedbackChannel = interaction.guild.channels.cache.get(process.env.CHANNEL_FEEDBACK);
       if (feedbackChannel) {
+        const threadUrl = `https://discord.com/channels/${interaction.guild.id}/${pendingFeedback.threadId}`;
         const feedbackEmbed = new EmbedBuilder()
           .setTitle('Purchasing-Ticket Feedback')
           .setColor(0x808080)
           .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
           .addFields(
-            { name: 'Thread', value: pendingFeedback.threadName, inline: true },
+            { name: 'Thread', value: `[${pendingFeedback.threadName}](${threadUrl})`, inline: true },
             { name: 'Assigned To', value: `<@${assigneeId}>`, inline: true },
             { name: 'Rating', value: `${'⭐'.repeat(parseInt(rating) || 0)} (${rating}/5)`, inline: true },
             { name: 'Feedback', value: feedback || 'No feedback provided' }
@@ -710,12 +711,12 @@ client.on('interactionCreate', async (interaction) => {
 
 function createTicketEmbed(modalId, fields, user) {
   const typeLabels = {
-    modal_eta_ppo: 'ETA (PPO/PST)',
-    modal_eta_ureq: 'ETA (UREQ)',
-    modal_restock: 'Restock',
-    modal_revive: 'Revive',
-    modal_new_item_preorder: 'New Item (Pre-order)',
-    modal_kompen: 'Kompensasi',
+    modal_eta_ppo: 'Purchasing Ticket - ETA (General)',
+    modal_eta_ureq: 'Purchasing Ticket - ETA (UREQ)',
+    modal_restock: 'Purchasing Ticket - Restock Request',
+    modal_revive: 'Purchasing Ticket - Revive',
+    modal_new_item_preorder: 'Purchasing Ticket - New DB Request',
+    modal_kompen: 'Purchasing Ticket - Kompensasi',
   };
 
   const embed = new EmbedBuilder()
