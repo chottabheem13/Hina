@@ -725,8 +725,14 @@ function createTicketEmbed(modalId, fields, user) {
     .setTimestamp();
 
   if (fields.priority) embed.addFields({ name: 'Priority', value: fields.priority, inline: true });
-  if (fields.item_id) embed.addFields({ name: 'Item ID', value: fields.item_id, inline: true });
-  if (fields.order_id) embed.addFields({ name: 'Order ID', value: fields.order_id, inline: true });
+  if (fields.item_id) {
+    embed.addFields({ name: 'Item ID', value: fields.item_id, inline: true });
+    embed.addFields({ name: 'Item Link', value: `https://kyou.id/items/${fields.item_id}` });
+  }
+  if (fields.order_id) {
+    embed.addFields({ name: 'Order ID', value: fields.order_id, inline: true });
+    embed.addFields({ name: 'Order Link', value: `https://old.kyou.id/admin/order/${fields.order_id}` });
+  }
   if (fields.link) embed.addFields({ name: 'Link', value: fields.link });
   if (fields.notes) embed.addFields({ name: 'Notes', value: fields.notes });
 
