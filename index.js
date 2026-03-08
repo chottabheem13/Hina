@@ -14,6 +14,7 @@ const {
 } = require('discord.js');
 
 const ticketCommand = require('./commands/purchasing-ticket');
+const mulmedCommand = require('./commands/multimedia-ticket');
 const { modals, createFeedbackModal } = require('./modals/ticketModals');
 const db = require('./database/db');
 
@@ -33,6 +34,34 @@ const TICKET_ROLES = {
   modal_eta_ureq: [],
   modal_revive: [],
   modal_restock: [],
+  // Digital Design
+  mulmed_kolase: ['1480109703408390237'],
+  mulmed_singpost: ['1480109703408390237'],
+  mulmed_announcement: ['1480109703408390237'],
+  mulmed_monthly_design: ['1480109703408390237'],
+  mulmed_other: ['1480109703408390237'],
+  // Single Printing
+  mulmed_store_design: ['1480109703408390237'],
+  mulmed_standee: ['1480109703408390237'],
+  mulmed_banner: ['1480109703408390237'],
+  mulmed_wallpaper: ['1480109703408390237'],
+  mulmed_other_print: ['1480109703408390237'],
+  // Offset Printing
+  mulmed_brosur: ['1480109703408390237'],
+  mulmed_kipas: ['1480109703408390237'],
+  mulmed_postcard: ['1480109703408390237'],
+  mulmed_sticker: ['1480109703408390237'],
+  mulmed_paper_bag: ['1480109703408390237'],
+  mulmed_dus_kyou: ['1480109703408390237'],
+  mulmed_other_offset: ['1480109703408390237'],
+  // Promotional Design
+  mulmed_thematic_sale: ['1480109703408390237'],
+  mulmed_sp_sale: ['1480109703408390237'],
+  mulmed_campaign: ['1480109703408390237'],
+  mulmed_give_away: ['1480109703408390237'],
+  // Event Design
+  mulmed_event: ['1480109703408390237'],
+  mulmed_project: ['1480109703408390237'],
 };
 
 // User IDs for specific ticket types (not roles)
@@ -43,17 +72,19 @@ const TICKET_USERS = {
   modal_restock: ['1317666401473007686'],
   modal_kompen: ['1317666401473007686'],
   modal_new_item_preorder: ['1317666401473007686'],
+  // All multimedia tickets use roles instead (see TICKET_ROLES - role 1480109703408390237)
 };
 
 client.commands = new Collection();
 client.commands.set(ticketCommand.data.name, ticketCommand);
+client.commands.set(mulmedCommand.data.name, mulmedCommand);
 
 // Register slash commands
 client.once('clientReady', async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-  const commands = [ticketCommand.data.toJSON()];
+  const commands = [ticketCommand.data.toJSON(), mulmedCommand.data.toJSON()];
 
   try {
     // Register globally (use GUILD_ID for faster testing)
@@ -145,6 +176,512 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
+  // Select menu - Multimedia ticket type selection
+  if (interaction.isStringSelectMenu() && interaction.customId === 'mulmed_type_select') {
+    const ticketType = interaction.values[0];
+
+    // If Digital Design, show sub-type dropdown FIRST
+    if (ticketType === 'digital_design') {
+      const subOptions = [
+        { label: 'Kolase', value: 'kolase', description: 'Collage design' },
+        { label: 'Singpost', value: 'singpost', description: 'Singpost design' },
+        { label: 'Announcement', value: 'announcement', description: 'Announcement design' },
+        { label: 'Monthly Design', value: 'monthly_design', description: 'Monthly design' },
+        { label: 'Other', value: 'other', description: 'Other digital design' },
+      ];
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('mulmed_digital_subtype_select')
+        .setPlaceholder('Select sub type...')
+        .addOptions(subOptions);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.update({
+        content: 'Select the type of digital design:',
+        components: [row],
+      });
+      return;
+    }
+
+    // If Single Printing, show sub-type dropdown FIRST
+    if (ticketType === 'single_printing') {
+      const subOptions = [
+        { label: 'Store Design', value: 'store_design', description: 'Store design request' },
+        { label: 'Standee', value: 'standee', description: 'Standee design request' },
+        { label: 'Banner', value: 'banner', description: 'Banner design request' },
+        { label: 'Wallpaper', value: 'wallpaper', description: 'Wallpaper design request' },
+        { label: 'Other', value: 'other_print', description: 'Other single printing request' },
+      ];
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('mulmed_single_subtype_select')
+        .setPlaceholder('Select sub type...')
+        .addOptions(subOptions);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.update({
+        content: 'Select the type of single printing:',
+        components: [row],
+      });
+      return;
+    }
+
+    // If Offset Printing, show sub-type dropdown FIRST
+    if (ticketType === 'offset_printing') {
+      const subOptions = [
+        { label: 'Brosur', value: 'brosur', description: 'Brosur request' },
+        { label: 'Kipas', value: 'kipas', description: 'Kipas request' },
+        { label: 'Postcard', value: 'postcard', description: 'Postcard request' },
+        { label: 'Sticker', value: 'sticker', description: 'Sticker request' },
+        { label: 'Paper Bag', value: 'paper_bag', description: 'Paper bag request' },
+        { label: 'Dus Kyou', value: 'dus_kyou', description: 'Dus Kyou request' },
+        { label: 'Other', value: 'other_offset', description: 'Other offset printing request' },
+      ];
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('mulmed_offset_subtype_select')
+        .setPlaceholder('Select sub type...')
+        .addOptions(subOptions);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.update({
+        content: 'Select the type of offset printing:',
+        components: [row],
+      });
+      return;
+    }
+
+    // If Promotional Design, show sub-type dropdown FIRST
+    if (ticketType === 'promotional_design') {
+      const subOptions = [
+        { label: 'Thematic Sale', value: 'thematic_sale', description: 'Thematic sale request' },
+        { label: 'SP Sale', value: 'sp_sale', description: 'SP sale request' },
+        { label: 'Campaign', value: 'campaign', description: 'Campaign request' },
+        { label: 'Give Away', value: 'give_away', description: 'Give away request' },
+      ];
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('mulmed_promo_subtype_select')
+        .setPlaceholder('Select sub type...')
+        .addOptions(subOptions);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.update({
+        content: 'Select the type of promotional design:',
+        components: [row],
+      });
+      return;
+    }
+
+    // If Event Design, show sub-type dropdown FIRST
+    if (ticketType === 'event_design') {
+      const subOptions = [
+        { label: 'Event', value: 'event', description: 'Event request' },
+        { label: 'Project', value: 'project', description: 'Project request' },
+      ];
+
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('mulmed_event_subtype_select')
+        .setPlaceholder('Select sub type...')
+        .addOptions(subOptions);
+
+      const row = new ActionRowBuilder().addComponents(selectMenu);
+
+      await interaction.update({
+        content: 'Select the type of event design:',
+        components: [row],
+      });
+      return;
+    }
+
+    // For other types, check if modal exists
+    const modalFn = modals[ticketType];
+
+    if (modalFn) {
+      // Fetch staff members for this ticket type
+      const staffMembers = new Map();
+
+      const userIds = TICKET_USERS[`mulmed_${ticketType}`] || [];
+      for (const userId of userIds) {
+        const member = await interaction.guild.members.fetch(userId).catch(() => null);
+        if (member && !member.user.bot) {
+          staffMembers.set(member.id, member);
+        }
+      }
+
+      // Convert to options for select menu
+      const staffOptions = Array.from(staffMembers.values())
+        .slice(0, 25)
+        .map((member) => ({
+          label: member.displayName,
+          value: member.id,
+          description: member.user.tag,
+        }));
+
+      await interaction.showModal(modalFn(staffOptions));
+    } else {
+      // For unknown types
+      await interaction.update({
+        content: `Unknown ticket type: **${ticketType}**`,
+        components: [],
+      });
+    }
+  }
+
+  // Select menu - Digital Design sub-type selection
+  if (interaction.isStringSelectMenu() && interaction.customId === 'mulmed_digital_subtype_select') {
+    const subType = interaction.values[0];
+    const modalFn = modals[subType];
+
+    if (!modalFn) {
+      await interaction.update({
+        content: `Unknown sub-type: **${subType}**`,
+        components: [],
+      });
+      return;
+    }
+
+    // Fetch staff members for this sub-type
+    const staffMembers = new Map();
+
+    const userIds = TICKET_USERS[`mulmed_${subType}`] || [];
+    for (const userId of userIds) {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member && !member.user.bot) {
+        staffMembers.set(member.id, member);
+      }
+    }
+
+    // Fetch from roles - ALWAYS fetch to get all members
+    const roleIds = TICKET_ROLES[`mulmed_${subType}`] || [];
+
+    // First, try to get from cache
+    for (const roleId of roleIds) {
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    // Then, always fetch to make sure we have all members (not just cached ones)
+    if (roleIds.length > 0) {
+      try {
+        await interaction.guild.members.fetch({ limit: 100 });
+        // After fetch, check cache again for role members
+        for (const roleId of roleIds) {
+          const role = interaction.guild.roles.cache.get(roleId);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) staffMembers.set(member.id, member);
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Member fetch failed:', e.message);
+      }
+    }
+
+    // Convert to options for select menu
+    const staffOptions = Array.from(staffMembers.values())
+      .slice(0, 25)
+      .map((member) => ({
+        label: member.displayName,
+        value: member.id,
+        description: member.user.tag,
+      }));
+
+    // Store sub_type in interaction for later use
+    interaction.mulmedSubType = subType;
+
+    await interaction.showModal(modalFn(staffOptions));
+  }
+
+  // Select menu - Single Printing sub-type selection
+  if (interaction.isStringSelectMenu() && interaction.customId === 'mulmed_single_subtype_select') {
+    const subType = interaction.values[0];
+    const modalFn = modals[subType];
+
+    if (!modalFn) {
+      await interaction.update({
+        content: `Unknown sub-type: **${subType}**`,
+        components: [],
+      });
+      return;
+    }
+
+    // Fetch staff members for this sub-type
+    const staffMembers = new Map();
+
+    const userIds = TICKET_USERS[`mulmed_${subType}`] || [];
+    for (const userId of userIds) {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member && !member.user.bot) {
+        staffMembers.set(member.id, member);
+      }
+    }
+
+    // Fetch from roles - ALWAYS fetch to get all members
+    const roleIds = TICKET_ROLES[`mulmed_${subType}`] || [];
+
+    // First, try to get from cache
+    for (const roleId of roleIds) {
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    // Then, always fetch to make sure we have all members (not just cached ones)
+    if (roleIds.length > 0) {
+      try {
+        await interaction.guild.members.fetch({ limit: 100 });
+        // After fetch, check cache again for role members
+        for (const roleId of roleIds) {
+          const role = interaction.guild.roles.cache.get(roleId);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) staffMembers.set(member.id, member);
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Member fetch failed:', e.message);
+      }
+    }
+
+    // Convert to options for select menu
+    const staffOptions = Array.from(staffMembers.values())
+      .slice(0, 25)
+      .map((member) => ({
+        label: member.displayName,
+        value: member.id,
+        description: member.user.tag,
+      }));
+
+    // Store sub_type in interaction for later use
+    interaction.mulmedSubType = subType;
+
+    await interaction.showModal(modalFn(staffOptions));
+  }
+
+  // Select menu - Offset Printing sub-type selection
+  if (interaction.isStringSelectMenu() && interaction.customId === 'mulmed_offset_subtype_select') {
+    const subType = interaction.values[0];
+    const modalFn = modals[subType];
+
+    if (!modalFn) {
+      await interaction.update({
+        content: `Unknown sub-type: **${subType}**`,
+        components: [],
+      });
+      return;
+    }
+
+    // Fetch staff members for this sub-type
+    const staffMembers = new Map();
+
+    const userIds = TICKET_USERS[`mulmed_${subType}`] || [];
+    for (const userId of userIds) {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member && !member.user.bot) {
+        staffMembers.set(member.id, member);
+      }
+    }
+
+    // Fetch from roles - ALWAYS fetch to get all members
+    const roleIds = TICKET_ROLES[`mulmed_${subType}`] || [];
+
+    // First, try to get from cache
+    for (const roleId of roleIds) {
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    // Then, always fetch to make sure we have all members (not just cached ones)
+    if (roleIds.length > 0) {
+      try {
+        await interaction.guild.members.fetch({ limit: 100 });
+        // After fetch, check cache again for role members
+        for (const roleId of roleIds) {
+          const role = interaction.guild.roles.cache.get(roleId);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) staffMembers.set(member.id, member);
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Member fetch failed:', e.message);
+      }
+    }
+
+    // Convert to options for select menu
+    const staffOptions = Array.from(staffMembers.values())
+      .slice(0, 25)
+      .map((member) => ({
+        label: member.displayName,
+        value: member.id,
+        description: member.user.tag,
+      }));
+
+    // Store sub_type in interaction for later use
+    interaction.mulmedSubType = subType;
+
+    await interaction.showModal(modalFn(staffOptions));
+  }
+
+  // Select menu - Promotional Design sub-type selection
+  if (interaction.isStringSelectMenu() && interaction.customId === 'mulmed_promo_subtype_select') {
+    const subType = interaction.values[0];
+    const modalFn = modals[subType];
+
+    if (!modalFn) {
+      await interaction.update({
+        content: `Unknown sub-type: **${subType}**`,
+        components: [],
+      });
+      return;
+    }
+
+    // Fetch staff members for this sub-type
+    const staffMembers = new Map();
+
+    const userIds = TICKET_USERS[`mulmed_${subType}`] || [];
+    for (const userId of userIds) {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member && !member.user.bot) {
+        staffMembers.set(member.id, member);
+      }
+    }
+
+    // Fetch from roles - ALWAYS fetch to get all members
+    const roleIds = TICKET_ROLES[`mulmed_${subType}`] || [];
+
+    // First, try to get from cache
+    for (const roleId of roleIds) {
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    // Then, always fetch to make sure we have all members (not just cached ones)
+    if (roleIds.length > 0) {
+      try {
+        await interaction.guild.members.fetch({ limit: 100 });
+        // After fetch, check cache again for role members
+        for (const roleId of roleIds) {
+          const role = interaction.guild.roles.cache.get(roleId);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) staffMembers.set(member.id, member);
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Member fetch failed:', e.message);
+      }
+    }
+
+    // Convert to options for select menu
+    const staffOptions = Array.from(staffMembers.values())
+      .slice(0, 25)
+      .map((member) => ({
+        label: member.displayName,
+        value: member.id,
+        description: member.user.tag,
+      }));
+
+    // Store sub_type in interaction for later use
+    interaction.mulmedSubType = subType;
+
+    await interaction.showModal(modalFn(staffOptions));
+  }
+
+  // Select menu - Event Design sub-type selection
+  if (interaction.isStringSelectMenu() && interaction.customId === 'mulmed_event_subtype_select') {
+    const subType = interaction.values[0];
+    const modalFn = modals[subType];
+
+    if (!modalFn) {
+      await interaction.update({
+        content: `Unknown sub-type: **${subType}**`,
+        components: [],
+      });
+      return;
+    }
+
+    // Fetch staff members for this sub-type
+    const staffMembers = new Map();
+
+    const userIds = TICKET_USERS[`mulmed_${subType}`] || [];
+    for (const userId of userIds) {
+      const member = await interaction.guild.members.fetch(userId).catch(() => null);
+      if (member && !member.user.bot) {
+        staffMembers.set(member.id, member);
+      }
+    }
+
+    // Fetch from roles - ALWAYS fetch to get all members
+    const roleIds = TICKET_ROLES[`mulmed_${subType}`] || [];
+
+    // First, try to get from cache
+    for (const roleId of roleIds) {
+      const role = interaction.guild.roles.cache.get(roleId);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    // Then, always fetch to make sure we have all members (not just cached ones)
+    if (roleIds.length > 0) {
+      try {
+        await interaction.guild.members.fetch({ limit: 100 });
+        // After fetch, check cache again for role members
+        for (const roleId of roleIds) {
+          const role = interaction.guild.roles.cache.get(roleId);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) staffMembers.set(member.id, member);
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Member fetch failed:', e.message);
+      }
+    }
+
+    // Convert to options for select menu
+    const staffOptions = Array.from(staffMembers.values())
+      .slice(0, 25)
+      .map((member) => ({
+        label: member.displayName,
+        value: member.id,
+        description: member.user.tag,
+      }));
+
+    // Store sub_type in interaction for later use
+    interaction.mulmedSubType = subType;
+
+    await interaction.showModal(modalFn(staffOptions));
+  }
+
   // Button click - Edit Assignee
   if (interaction.isButton() && interaction.customId.startsWith('edit_assignee_')) {
     const threadId = interaction.customId.replace('edit_assignee_', '');
@@ -167,13 +704,41 @@ client.on('interactionCreate', async (interaction) => {
     const creatorId = ticketMessage.embeds[0]?.author?.name?.match(/\((\d+)\)$/)?.[1] ||
       activeTickets.get(thread.id)?.created_by;
 
-    // Check if the user is the ticket creator
-    if (creatorId && interaction.user.id !== creatorId) {
-      await interaction.reply({
-        content: '❌ Only the ticket creator can edit assignees.',
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
+    // Get assigned users from ticket embed
+    const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
+    const assignedUserIds = [];
+    if (assignedField) {
+      const mentionRegex = /<@!?(\d+)>/g;
+      let match;
+      while ((match = mentionRegex.exec(assignedField.value)) !== null) {
+        assignedUserIds.push(match[1]);
+      }
+    }
+
+    // Check if this is a multimedia ticket
+    const isMultimediaTicket = ticketMessage.embeds[0]?.title?.includes('Multimedia Ticket');
+
+    if (isMultimediaTicket) {
+      // Allow creator or assigned staff to edit for multimedia tickets
+      const isCreator = creatorId && interaction.user.id === creatorId;
+      const isAssignee = assignedUserIds.includes(interaction.user.id);
+
+      if (!isCreator && !isAssignee) {
+        await interaction.reply({
+          content: '❌ Only the ticket creator or assigned staff can edit assignees.',
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+    } else {
+      // Original behavior for purchasing tickets - only creator can edit
+      if (creatorId && interaction.user.id !== creatorId) {
+        await interaction.reply({
+          content: '❌ Only the ticket creator can edit assignees.',
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
     }
 
     // Get ticket type from title
@@ -312,6 +877,7 @@ client.on('interactionCreate', async (interaction) => {
       threadId: thread.id,
       threadName: thread.name,
       ticketId: ticketIdFromEmbed || ticketData?.ticketId || thread.id,
+      ticketType: ticketData?.type || '',
       assigneeIds,
       currentIndex: 0,
       userId: interaction.user.id,
@@ -431,7 +997,10 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       // Send feedback for this assignee
-      const feedbackChannel = interaction.guild.channels.cache.get(process.env.CHANNEL_FEEDBACK);
+      // Check if this is a multimedia ticket
+      const isMulmed = pendingFeedback.ticketType?.startsWith('mulmed_') || false;
+      const feedbackChannelId = isMulmed ? process.env.CHANNEL_FEEDBACKMULMED : process.env.CHANNEL_FEEDBACK;
+      const feedbackChannel = interaction.guild.channels.cache.get(feedbackChannelId);
       if (feedbackChannel) {
         const threadUrl = `https://discord.com/channels/${interaction.guild.id}/${pendingFeedback.threadId}`;
         const feedbackEmbed = new EmbedBuilder()
@@ -510,14 +1079,24 @@ client.on('interactionCreate', async (interaction) => {
     interaction.fields.fields.forEach((field) => {
       // Type 3 = Select menu, Type 4 = Text input
       if (field.type === 3 && field.values) {
-        fields[field.customId] = field.values[0];
+        // For assigned_to field, keep all values (multi-select)
+        if (field.customId === 'assigned_to') {
+          fields[field.customId] = field.values;
+        } else {
+          fields[field.customId] = field.values[0];
+        }
       } else if (field.type === 4 && field.value !== undefined) {
         fields[field.customId] = field.value;
       }
     });
 
+    // Add sub_type if it was stored (for digital design)
+    if (interaction.mulmedSubType) {
+      fields.sub_type = interaction.mulmedSubType;
+    }
+
     // Check if staff was assigned in the modal
-    if (!fields.assigned_to) {
+    if (!fields.assigned_to || fields.assigned_to.length === 0) {
       await interaction.reply({ content: 'Please select a staff member to assign.', flags: MessageFlags.Ephemeral });
       return;
     }
@@ -525,7 +1104,7 @@ client.on('interactionCreate', async (interaction) => {
     // Staff was selected in modal, create ticket directly
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const assignedUserIds = [fields.assigned_to];
+    const assignedUserIds = Array.isArray(fields.assigned_to) ? fields.assigned_to : [fields.assigned_to];
     const user = interaction.user;
 
     const embed = createTicketEmbed(modalId, fields, user);
@@ -545,8 +1124,36 @@ client.on('interactionCreate', async (interaction) => {
       modal_revive: 'REVIVE',
       modal_new_item_preorder: 'NEW-PO',
       modal_kompen: 'KOMPEN',
+      // Digital Design
+      modal_mulmed_kolase: 'KOLASE',
+      modal_mulmed_singpost: 'SINGPOST',
+      modal_mulmed_announcement: 'ANNOUNCE',
+      modal_mulmed_monthly_design: 'MONTHLY',
+      modal_mulmed_other: 'OTHER-DIGI',
+      // Single Printing
+      modal_mulmed_store_design: 'STORE',
+      modal_mulmed_standee: 'STANDEE',
+      modal_mulmed_banner: 'BANNER',
+      modal_mulmed_wallpaper: 'WALLPAPER',
+      modal_mulmed_other_print: 'OTHER-PRINT',
+      // Offset Printing
+      modal_mulmed_brosur: 'BROSUR',
+      modal_mulmed_kipas: 'KIPAS',
+      modal_mulmed_postcard: 'POSTCARD',
+      modal_mulmed_sticker: 'STICKER',
+      modal_mulmed_paper_bag: 'PAPERBAG',
+      modal_mulmed_dus_kyou: 'DUSKYOU',
+      modal_mulmed_other_offset: 'OTHER-OFFSET',
+      // Promotional Design
+      modal_mulmed_thematic_sale: 'THEMATIC',
+      modal_mulmed_sp_sale: 'SPSALE',
+      modal_mulmed_campaign: 'CAMPAIGN',
+      modal_mulmed_give_away: 'GIVEAWAY',
+      // Event Design
+      modal_mulmed_event: 'EVENT',
+      modal_mulmed_project: 'PROJECT',
     };
-    const nameParts = [typeShort[modalId]];
+    const nameParts = [typeShort[modalId] || 'TICKET'];
     if (fields.item_id) nameParts.push(fields.item_id);
     if (fields.order_id) nameParts.push(fields.order_id);
     nameParts.push(user.username);
@@ -568,6 +1175,14 @@ client.on('interactionCreate', async (interaction) => {
       item_id: fields.item_id ? parseInt(fields.item_id) : null,
       order_id: fields.order_id ? parseInt(fields.order_id) : null,
       notes: fields.notes || null,
+      brief: fields.brief || null,
+      link: fields.link || null,
+      size: fields.size || null,
+      size_qty: fields.size_qty || null,
+      size_placement: fields.size_placement || null,
+      deadline_info: fields.deadline_info || null,
+      additional_output: fields.additional_output || null,
+      additional: fields.additional || null,
       created_by: user.id,
       created_by_name: user.displayName || user.username,
       assigned_to: JSON.stringify(assignedUserIds.map(id => ({ id, name: '' }))),
@@ -577,6 +1192,14 @@ client.on('interactionCreate', async (interaction) => {
     if (!ticketDbData.order_id) delete ticketDbData.order_id;
     if (!ticketDbData.notes) delete ticketDbData.notes;
     if (!ticketDbData.priority) delete ticketDbData.priority;
+    if (!ticketDbData.brief) delete ticketDbData.brief;
+    if (!ticketDbData.link) delete ticketDbData.link;
+    if (!ticketDbData.size) delete ticketDbData.size;
+    if (!ticketDbData.size_qty) delete ticketDbData.size_qty;
+    if (!ticketDbData.size_placement) delete ticketDbData.size_placement;
+    if (!ticketDbData.deadline_info) delete ticketDbData.deadline_info;
+    if (!ticketDbData.additional_output) delete ticketDbData.additional_output;
+    if (!ticketDbData.additional) delete ticketDbData.additional;
 
     try {
       await db.insertRow('purchasing_tickets', ticketDbData);
@@ -721,6 +1344,34 @@ function createTicketEmbed(modalId, fields, user) {
     modal_revive: 'Purchasing Ticket - Revive',
     modal_new_item_preorder: 'Purchasing Ticket - New DB Request',
     modal_kompen: 'Purchasing Ticket - Kompensasi',
+    // Digital Design
+    mulmed_kolase: 'Multimedia Ticket - Kolase',
+    mulmed_singpost: 'Multimedia Ticket - Singpost',
+    mulmed_announcement: 'Multimedia Ticket - Announcement',
+    mulmed_monthly_design: 'Multimedia Ticket - Monthly Design',
+    mulmed_other: 'Multimedia Ticket - Other',
+    // Single Printing
+    mulmed_store_design: 'Multimedia Ticket - Store Design',
+    mulmed_standee: 'Multimedia Ticket - Standee',
+    mulmed_banner: 'Multimedia Ticket - Banner',
+    mulmed_wallpaper: 'Multimedia Ticket - Wallpaper',
+    mulmed_other_print: 'Multimedia Ticket - Other Printing',
+    // Offset Printing
+    mulmed_brosur: 'Multimedia Ticket - Brosur',
+    mulmed_kipas: 'Multimedia Ticket - Kipas',
+    mulmed_postcard: 'Multimedia Ticket - Postcard',
+    mulmed_sticker: 'Multimedia Ticket - Sticker',
+    mulmed_paper_bag: 'Multimedia Ticket - Paper Bag',
+    mulmed_dus_kyou: 'Multimedia Ticket - Dus Kyou',
+    mulmed_other_offset: 'Multimedia Ticket - Other Offset',
+    // Promotional Design
+    mulmed_thematic_sale: 'Multimedia Ticket - Thematic Sale',
+    mulmed_sp_sale: 'Multimedia Ticket - SP Sale',
+    mulmed_campaign: 'Multimedia Ticket - Campaign',
+    mulmed_give_away: 'Multimedia Ticket - Give Away',
+    // Event Design
+    mulmed_event: 'Multimedia Ticket - Event',
+    mulmed_project: 'Multimedia Ticket - Project',
   };
 
   const embed = new EmbedBuilder()
@@ -729,7 +1380,9 @@ function createTicketEmbed(modalId, fields, user) {
     .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL() })
     .setTimestamp();
 
-  if (fields.priority) embed.addFields({ name: 'Priority', value: fields.priority, inline: true });
+  // Always show priority, default to Normal
+  const priorityValue = fields.priority || 'Normal';
+  embed.addFields({ name: 'Priority', value: priorityValue, inline: true });
   if (fields.item_id) {
     embed.addFields({ name: 'Item ID', value: fields.item_id, inline: true });
     embed.addFields({ name: 'Item Link', value: `https://kyou.id/items/${fields.item_id}` });
@@ -739,6 +1392,14 @@ function createTicketEmbed(modalId, fields, user) {
     embed.addFields({ name: 'Order Link', value: `https://old.kyou.id/admin/order/${fields.order_id}` });
   }
   if (fields.link) embed.addFields({ name: 'Link', value: fields.link });
+  if (fields.sub_type) embed.addFields({ name: 'Sub Type', value: fields.sub_type, inline: true });
+  if (fields.size) embed.addFields({ name: 'Size', value: fields.size, inline: true });
+  if (fields.size_qty) embed.addFields({ name: 'Size & QTY', value: fields.size_qty, inline: true });
+  if (fields.size_placement) embed.addFields({ name: 'Size / Placement', value: fields.size_placement, inline: true });
+  if (fields.deadline_info) embed.addFields({ name: 'Deadline / Additional Info', value: fields.deadline_info });
+  if (fields.brief) embed.addFields({ name: 'Brief', value: fields.brief });
+  if (fields.additional_output) embed.addFields({ name: 'Additional Output', value: fields.additional_output });
+  if (fields.additional) embed.addFields({ name: 'Additional', value: fields.additional });
   if (fields.notes) embed.addFields({ name: 'Notes', value: fields.notes });
 
   return embed;
@@ -752,6 +1413,35 @@ function getChannelForTicket(modalId) {
     modal_revive: process.env.CHANNEL_REVIVE,
     modal_new_item_preorder: process.env.CHANNEL_PPO,
     modal_kompen: process.env.CHANNEL_KOMPEN,
+    // Multimedia channels (with modal_ prefix)
+    // Digital Design sub-types (with modal_ prefix)
+    modal_mulmed_kolase: process.env.CHANNEL_DIGITAL,
+    modal_mulmed_singpost: process.env.CHANNEL_DIGITAL,
+    modal_mulmed_announcement: process.env.CHANNEL_DIGITAL,
+    modal_mulmed_monthly_design: process.env.CHANNEL_DIGITAL,
+    modal_mulmed_other: process.env.CHANNEL_DIGITAL,
+    // Single Printing sub-types (with modal_ prefix)
+    modal_mulmed_store_design: process.env.CHANNEL_SINGLEPRINT,
+    modal_mulmed_standee: process.env.CHANNEL_SINGLEPRINT,
+    modal_mulmed_banner: process.env.CHANNEL_SINGLEPRINT,
+    modal_mulmed_wallpaper: process.env.CHANNEL_SINGLEPRINT,
+    modal_mulmed_other_print: process.env.CHANNEL_SINGLEPRINT,
+    // Offset Printing sub-types (with modal_ prefix)
+    modal_mulmed_brosur: process.env.CHANNEL_OFFSET,
+    modal_mulmed_kipas: process.env.CHANNEL_OFFSET,
+    modal_mulmed_postcard: process.env.CHANNEL_OFFSET,
+    modal_mulmed_sticker: process.env.CHANNEL_OFFSET,
+    modal_mulmed_paper_bag: process.env.CHANNEL_OFFSET,
+    modal_mulmed_dus_kyou: process.env.CHANNEL_OFFSET,
+    modal_mulmed_other_offset: process.env.CHANNEL_OFFSET,
+    // Promotional Design sub-types (with modal_ prefix)
+    modal_mulmed_thematic_sale: process.env.CHANNEL_PROMO,
+    modal_mulmed_sp_sale: process.env.CHANNEL_PROMO,
+    modal_mulmed_campaign: process.env.CHANNEL_PROMO,
+    modal_mulmed_give_away: process.env.CHANNEL_PROMO,
+    // Event Design sub-types (with modal_ prefix)
+    modal_mulmed_event: process.env.CHANNEL_EVENT,
+    modal_mulmed_project: process.env.CHANNEL_EVENT,
   };
   return channelMap[modalId];
 }
