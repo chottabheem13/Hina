@@ -29,16 +29,20 @@ const activeTickets = new Map();
 
 // Role IDs for each ticket type
 const TICKET_ROLES = {
-  modal_eta_ppo: ['1300285037241045073', '1337705127703871488'],
-  modal_eta_ureq: ['1336223205601316936'],
-  modal_revive: ['1300285037241045073', '1337705127703871488', '1336223205601316936'],
-  modal_restock: ['1204414544550821978'],
+  modal_eta_ppo: [],
+  modal_eta_ureq: [],
+  modal_revive: [],
+  modal_restock: [],
 };
 
 // User IDs for specific ticket types (not roles)
 const TICKET_USERS = {
-  modal_kompen: ['392321900577161219', '421215427696394241'],
-  modal_new_item_preorder: ['1155539420871667824', '392321900577161219', '651993926986629140', '628815933208657921'],
+  modal_kompen: ['1317666401473007686'],
+  modal_new_item_preorder: ['1317666401473007686'],
+  modal_eta_ppo: ['1317666401473007686'],
+  modal_eta_ureq: ['1317666401473007686'],
+  modal_revive: ['1317666401473007686'],
+  modal_restock: ['1317666401473007686'],
 };
 
 client.commands = new Collection();
