@@ -58,14 +58,17 @@ function createModal(customId, title, fields) {
 }
 
 // Helper to create staff select field
-function createStaffField(staffOptions) {
+function createStaffField(staffOptions, specialNote = null) {
   if (!staffOptions || staffOptions.length === 0) {
     return null;
   }
+  const description = specialNote
+    ? `Select staff to handle this ticket (Specialist: ${specialNote})`
+    : 'Select staff to handle this ticket';
   return {
     id: 'assigned_to',
     label: 'Assign To',
-    description: 'Select staff to handle this ticket',
+    description,
     type: 'select',
     placeholder: 'Select staff...',
     minValues: 1,
@@ -187,7 +190,7 @@ const modals = {
   },
 
   // Multimedia tickets - Digital Design sub-types
-  kolase: (staffOptions = []) => {
+  kolase: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -204,12 +207,12 @@ const modals = {
       { id: 'link', label: 'Link', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Describe your requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_kolase', 'Multimedia Ticket - Kolase', fields);
   },
 
-  singpost: (staffOptions = []) => {
+  singpost: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -227,12 +230,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description...' },
       { id: 'additional_output', label: 'Additional Output', description: 'Additional requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_singpost', 'Multimedia Ticket - Singpost', fields);
   },
 
-  announcement: (staffOptions = []) => {
+  announcement: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -250,12 +253,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description...' },
       { id: 'additional', label: 'Additional', description: 'Additional requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional requirements...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_announcement', 'Multimedia Ticket - Announcement', fields);
   },
 
-  monthly_design: (staffOptions = []) => {
+  monthly_design: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -273,12 +276,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description...' },
       { id: 'additional_output', label: 'Additional Output', description: 'Additional requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_monthly_design', 'Multimedia Ticket - Monthly Design', fields);
   },
 
-  other: (staffOptions = []) => {
+  other: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -296,13 +299,13 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Your requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description...' },
       { id: 'additional', label: 'Additional', description: 'Additional & output requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional info, output specs, etc...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_other', 'Multimedia Ticket - Other', fields);
   },
 
   // Single Printing sub-types
-  store_design: (staffOptions = []) => {
+  store_design: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -321,12 +324,12 @@ const modals = {
       { id: 'size', label: 'Size', description: 'Specify the size', placeholder: 'e.g., 2x3 meters, A1, etc.' },
       { id: 'additional_output', label: 'Additional Output', description: 'Additional output requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_store_design', 'Multimedia Ticket - Store Design', fields);
   },
 
-  standee: (staffOptions = []) => {
+  standee: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -344,12 +347,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your standee requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your standee request...' },
       { id: 'size', label: 'Size', description: 'Specify the size (optional)', required: false, placeholder: 'e.g., 160x60cm, etc.' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_standee', 'Multimedia Ticket - Standee', fields);
   },
 
-  banner: (staffOptions = []) => {
+  banner: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -367,12 +370,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your banner requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your banner request...' },
       { id: 'size', label: 'Size', description: 'Specify the size', placeholder: 'e.g., 3x1 meters, etc.' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_banner', 'Multimedia Ticket - Banner', fields);
   },
 
-  wallpaper: (staffOptions = []) => {
+  wallpaper: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -390,12 +393,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your wallpaper requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your wallpaper request...' },
       { id: 'size', label: 'Size', description: 'Specify the size', placeholder: 'e.g., 1920x1080, etc.' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_wallpaper', 'Multimedia Ticket - Wallpaper', fields);
   },
 
-  other_print: (staffOptions = []) => {
+  other_print: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -414,13 +417,13 @@ const modals = {
       { id: 'size', label: 'Size', description: 'Specify the size (optional)', required: false, placeholder: 'e.g., A4, custom, etc.' },
       { id: 'additional_output', label: 'Additional Output', description: 'Additional requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_other_print', 'Multimedia Ticket - Other Printing', fields);
   },
 
   // Offset Printing sub-types
-  brosur: (staffOptions = []) => {
+  brosur: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -438,12 +441,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity', placeholder: 'e.g., A5 - 1000 pcs' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_brosur', 'Multimedia Ticket - Brosur', fields);
   },
 
-  kipas: (staffOptions = []) => {
+  kipas: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -461,12 +464,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity', placeholder: 'e.g., 30cm - 500 pcs' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_kipas', 'Multimedia Ticket - Kipas', fields);
   },
 
-  postcard: (staffOptions = []) => {
+  postcard: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -484,12 +487,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity', placeholder: 'e.g., 10x15cm - 200 pcs' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_postcard', 'Multimedia Ticket - Postcard', fields);
   },
 
-  sticker: (staffOptions = []) => {
+  sticker: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -507,12 +510,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity', placeholder: 'e.g., 5cm - 1000 pcs' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_sticker', 'Multimedia Ticket - Sticker', fields);
   },
 
-  paper_bag: (staffOptions = []) => {
+  paper_bag: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -531,12 +534,12 @@ const modals = {
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity', placeholder: 'e.g., Medium - 500 pcs' },
       { id: 'additional_output', label: 'Additional Output', description: 'Additional requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional requirements...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_paper_bag', 'Multimedia Ticket - Paper Bag', fields);
   },
 
-  dus_kyou: (staffOptions = []) => {
+  dus_kyou: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -554,12 +557,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity', placeholder: 'e.g., 10x10x5cm - 200 pcs' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_dus_kyou', 'Multimedia Ticket - Dus Kyou', fields);
   },
 
-  other_offset: (staffOptions = []) => {
+  other_offset: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -578,13 +581,13 @@ const modals = {
       { id: 'size_qty', label: 'Size & QTY', description: 'Specify size and quantity (optional)', required: false, placeholder: 'e.g., Custom - 100 pcs' },
       { id: 'additional_output', label: 'Additional Output', description: 'Additional requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional requirements...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_other_offset', 'Multimedia Ticket - Other Offset', fields);
   },
 
   // Promotional Design sub-types
-  thematic_sale: (staffOptions = []) => {
+  thematic_sale: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -602,12 +605,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Your requirements (Hero Link wajib)', style: TextInputStyle.Paragraph, placeholder: 'Describe your request (include Hero Link)...' },
       { id: 'deadline_info', label: 'Deadline / Info', description: 'Deadline, size/placement, additional info', style: TextInputStyle.Paragraph, placeholder: 'Deadline: DD/MM/YYYY, Size/Placement, additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_thematic_sale', 'Multimedia Ticket - Thematic Sale', fields);
   },
 
-  sp_sale: (staffOptions = []) => {
+  sp_sale: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -625,12 +628,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Your requirements (Hero Link wajib)', style: TextInputStyle.Paragraph, placeholder: 'Describe your request (include Hero Link)...' },
       { id: 'deadline_info', label: 'Deadline / Info', description: 'Deadline, size/placement, additional info', style: TextInputStyle.Paragraph, placeholder: 'Deadline: DD/MM/YYYY, Size/Placement, additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_sp_sale', 'Multimedia Ticket - SP Sale', fields);
   },
 
-  campaign: (staffOptions = []) => {
+  campaign: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -648,12 +651,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'deadline_info', label: 'Deadline / Info', description: 'Deadline, size/placement, additional info', style: TextInputStyle.Paragraph, placeholder: 'Deadline: DD/MM/YYYY, Size/Placement, additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_campaign', 'Multimedia Ticket - Campaign', fields);
   },
 
-  give_away: (staffOptions = []) => {
+  give_away: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -671,13 +674,13 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'deadline_info', label: 'Deadline / Info', description: 'Deadline, size/placement, additional info', style: TextInputStyle.Paragraph, placeholder: 'Deadline: DD/MM/YYYY, Size/Placement, additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_give_away', 'Multimedia Ticket - Give Away', fields);
   },
 
   // Event Design sub-types
-  event: (staffOptions = []) => {
+  event: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -695,12 +698,12 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'deadline_info', label: 'Deadline / Info', description: 'Deadline, size/scope, additional info', style: TextInputStyle.Paragraph, placeholder: 'Deadline: DD/MM/YYYY, Size/Scope, additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_event', 'Multimedia Ticket - Event', fields);
   },
 
-  project: (staffOptions = []) => {
+  project: (staffOptions = [], specialNote = null) => {
     const fields = [
       {
         id: 'priority',
@@ -718,7 +721,7 @@ const modals = {
       { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your request...' },
       { id: 'deadline_info', label: 'Deadline / Info', description: 'Deadline, size/scope, additional info (optional)', required: false, style: TextInputStyle.Paragraph, placeholder: 'Deadline: DD/MM/YYYY, Size/Scope, additional info...' },
     ];
-    const staffField = createStaffField(staffOptions);
+    const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_project', 'Multimedia Ticket - Project', fields);
   },

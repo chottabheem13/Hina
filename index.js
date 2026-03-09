@@ -76,6 +76,28 @@ const TICKET_USERS = {
   mulmed_monthly_design: ['1317666401473007686', '896347272307154955'],
 };
 
+// Special notes for multimedia tickets indicating which team members should handle each ticket type
+const TICKET_SPECIAL_NOTES = {
+  // Digital Design
+  mulmed_announcement: 'Yudha & Farel',
+  // Single Printing
+  mulmed_store_design: 'Farel & Yudha',
+  mulmed_standee: 'Yudha & Farel',
+  mulmed_banner: 'Yudha & Farel',
+  mulmed_wallpaper: 'Yudha & Farel',
+  // Offset Printing
+  mulmed_brosur: 'Farel & Yudha',
+  mulmed_kipas: 'Farel & Yudha',
+  mulmed_postcard: 'Farel & Yudha',
+  mulmed_sticker: 'Farel & Yudha',
+  mulmed_paper_bag: 'Farel & Yudha',
+  mulmed_dus_kyou: 'Yudha & Farel',
+  // Promotional Design
+  mulmed_thematic_sale: 'Fatur & Tegar',
+  mulmed_campaign: 'Fatur & Tegar',
+  mulmed_give_away: 'Farel & Fatur',
+};
+
 client.commands = new Collection();
 client.commands.set(ticketCommand.data.name, ticketCommand);
 client.commands.set(mulmedCommand.data.name, mulmedCommand);
@@ -173,7 +195,11 @@ client.on('interactionCreate', async (interaction) => {
           description: member.user.tag,
         }));
 
-      await interaction.showModal(modalFn(staffOptions));
+      // Get special note for this ticket type (strip 'modal_' prefix)
+      const ticketTypeKey = ticketType.startsWith('mulmed_') ? ticketType : null;
+      const specialNote = ticketTypeKey ? TICKET_SPECIAL_NOTES[ticketTypeKey] || null : null;
+
+      await interaction.showModal(modalFn(staffOptions, specialNote));
     }
   }
 
