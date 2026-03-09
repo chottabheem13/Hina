@@ -30,10 +30,10 @@ const activeTickets = new Map();
 
 // Role IDs for each ticket type
 const TICKET_ROLES = {
-  modal_eta_ppo: [],
-  modal_eta_ureq: [],
-  modal_revive: [],
-  modal_restock: [],
+  modal_eta_ppo: ['1480454775429664921', '1480454881134247966'],
+  modal_eta_ureq: ['1480455080833450034'],
+  modal_revive: ['1480109576589152327'],
+  modal_restock: ['1480109576589152327'],
   // Digital Design
   mulmed_announcement: ['1480109703408390237'],
   mulmed_other: ['1480109703408390237'],
@@ -64,16 +64,12 @@ const TICKET_ROLES = {
 // User IDs for specific ticket types (not roles)
 const TICKET_USERS = {
   // Purchasing tickets
-  modal_eta_ppo: ['1317666401473007686'],
-  modal_eta_ureq: ['1317666401473007686'],
-  modal_revive: ['1317666401473007686'],
-  modal_restock: ['1317666401473007686'],
-  modal_kompen: ['1317666401473007686'],
-  modal_new_item_preorder: ['1317666401473007686'],
+  modal_kompen: ['1336899680197542030', '1317666401473007686'],
+  modal_new_item_preorder: ['1336899680197542030', '1317666401473007686', '896347272307154955', '628815933208657921'],
   // Multimedia tickets - direct user assignments
-  mulmed_kolase: ['1317666401473007686'],
-  mulmed_singpost: ['1317666401473007686', '896347272307154955'],
-  mulmed_monthly_design: ['1317666401473007686', '896347272307154955'],
+  mulmed_kolase: ['463834579799638056'],
+  mulmed_singpost: ['463834579799638056', '915811508561272894'],
+  mulmed_monthly_design: ['463834579799638056', '915811508561272894'],
 };
 
 // Special notes for multimedia tickets indicating which team members should handle each ticket type
@@ -793,11 +789,11 @@ client.on('interactionCreate', async (interaction) => {
     let ticketTypeKey = null;
 
     // Purchasing ticket types
-    if (embedTitle.includes('PPO') || embedTitle.includes('PST')) ticketTypeKey = 'modal_eta_ppo';
-    else if (embedTitle.includes('UREQ') && embedTitle.includes('ETA')) ticketTypeKey = 'modal_eta_ureq';
-    else if (embedTitle.includes('Restock')) ticketTypeKey = 'modal_restock';
+    if (embedTitle.includes('ETA (General)') || embedTitle.includes('PPO') || embedTitle.includes('PST')) ticketTypeKey = 'modal_eta_ppo';
+    else if (embedTitle.includes('ETA (UREQ)')) ticketTypeKey = 'modal_eta_ureq';
+    else if (embedTitle.includes('Restock Request')) ticketTypeKey = 'modal_restock';
     else if (embedTitle.includes('Revive')) ticketTypeKey = 'modal_revive';
-    else if (embedTitle.includes('Pre-order')) ticketTypeKey = 'modal_new_item_preorder';
+    else if (embedTitle.includes('New DB Request')) ticketTypeKey = 'modal_new_item_preorder';
     else if (embedTitle.includes('Kompensasi')) ticketTypeKey = 'modal_kompen';
     // Multimedia ticket types
     else if (embedTitle.includes('Kolase')) ticketTypeKey = 'mulmed_kolase';
@@ -845,15 +841,25 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
 
+    // Try to fetch role members if still empty
     if (staffMembers.size === 0 && roleIds.length > 0) {
       try {
-        const fetched = await interaction.guild.members.fetch({ limit: 100 });
+        // Fetch all members to ensure role data is loaded
+        await interaction.guild.members.fetch();
+
+        // Now check each role for members
         for (const roleId of roleIds) {
-          fetched.filter((m) => m.roles.cache.has(roleId) && !m.user.bot)
-            .forEach((member) => staffMembers.set(member.id, member));
+          const role = interaction.guild.roles.cache.get(roleId);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) {
+                staffMembers.set(member.id, member);
+              }
+            });
+          }
         }
       } catch (e) {
-        console.log('Member fetch failed:', e.message);
+        console.log('Role member fetch failed:', e.message);
       }
     }
 
