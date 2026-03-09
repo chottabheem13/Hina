@@ -35,10 +35,7 @@ const TICKET_ROLES = {
   modal_revive: [],
   modal_restock: [],
   // Digital Design
-  mulmed_kolase: ['1480109703408390237'],
-  mulmed_singpost: ['1480109703408390237'],
   mulmed_announcement: ['1480109703408390237'],
-  mulmed_monthly_design: ['1480109703408390237'],
   mulmed_other: ['1480109703408390237'],
   // Single Printing
   mulmed_store_design: ['1480109703408390237'],
@@ -66,13 +63,17 @@ const TICKET_ROLES = {
 
 // User IDs for specific ticket types (not roles)
 const TICKET_USERS = {
+  // Purchasing tickets
   modal_eta_ppo: ['1317666401473007686'],
   modal_eta_ureq: ['1317666401473007686'],
   modal_revive: ['1317666401473007686'],
   modal_restock: ['1317666401473007686'],
   modal_kompen: ['1317666401473007686'],
   modal_new_item_preorder: ['1317666401473007686'],
-  // All multimedia tickets use roles instead (see TICKET_ROLES - role 1480109703408390237)
+  // Multimedia tickets - direct user assignments
+  mulmed_kolase: ['1317666401473007686'],
+  mulmed_singpost: ['1317666401473007686', '896347272307154955'],
+  mulmed_monthly_design: ['1317666401473007686', '896347272307154955'],
 };
 
 client.commands = new Collection();
