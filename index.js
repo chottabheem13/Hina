@@ -15,7 +15,7 @@ const {
 
 const ticketCommand = require('./commands/purchasing-ticket');
 const mulmedCommand = require('./commands/multimedia-ticket');
-const { modals, createFeedbackModal } = require('./modals/ticketModals');
+const { modals, createFeedbackModal, createEditTicketModal } = require('./modals/ticketModals');
 const db = require('./database/db');
 
 const client = new Client({
@@ -790,18 +790,44 @@ client.on('interactionCreate', async (interaction) => {
 
     // Get ticket type from title
     const embedTitle = ticketMessage.embeds[0]?.title || '';
-    let modalId = null;
-    if (embedTitle.includes('PPO') || embedTitle.includes('PST')) modalId = 'modal_eta_ppo';
-    else if (embedTitle.includes('UREQ') && embedTitle.includes('ETA')) modalId = 'modal_eta_ureq';
-    else if (embedTitle.includes('Restock')) modalId = 'modal_restock';
-    else if (embedTitle.includes('Revive')) modalId = 'modal_revive';
-    else if (embedTitle.includes('Pre-order')) modalId = 'modal_new_item_preorder';
-    else if (embedTitle.includes('Kompensasi')) modalId = 'modal_kompen';
+    let ticketTypeKey = null;
+
+    // Purchasing ticket types
+    if (embedTitle.includes('PPO') || embedTitle.includes('PST')) ticketTypeKey = 'modal_eta_ppo';
+    else if (embedTitle.includes('UREQ') && embedTitle.includes('ETA')) ticketTypeKey = 'modal_eta_ureq';
+    else if (embedTitle.includes('Restock')) ticketTypeKey = 'modal_restock';
+    else if (embedTitle.includes('Revive')) ticketTypeKey = 'modal_revive';
+    else if (embedTitle.includes('Pre-order')) ticketTypeKey = 'modal_new_item_preorder';
+    else if (embedTitle.includes('Kompensasi')) ticketTypeKey = 'modal_kompen';
+    // Multimedia ticket types
+    else if (embedTitle.includes('Kolase')) ticketTypeKey = 'mulmed_kolase';
+    else if (embedTitle.includes('Singpost')) ticketTypeKey = 'mulmed_singpost';
+    else if (embedTitle.includes('Announcement')) ticketTypeKey = 'mulmed_announcement';
+    else if (embedTitle.includes('Monthly Design')) ticketTypeKey = 'mulmed_monthly_design';
+    else if (embedTitle.includes('Other') && embedTitle.includes('Digital Design')) ticketTypeKey = 'mulmed_other';
+    else if (embedTitle.includes('Store Design')) ticketTypeKey = 'mulmed_store_design';
+    else if (embedTitle.includes('Standee')) ticketTypeKey = 'mulmed_standee';
+    else if (embedTitle.includes('Banner')) ticketTypeKey = 'mulmed_banner';
+    else if (embedTitle.includes('Wallpaper')) ticketTypeKey = 'mulmed_wallpaper';
+    else if (embedTitle.includes('Other Printing')) ticketTypeKey = 'mulmed_other_print';
+    else if (embedTitle.includes('Brosur')) ticketTypeKey = 'mulmed_brosur';
+    else if (embedTitle.includes('Kipas')) ticketTypeKey = 'mulmed_kipas';
+    else if (embedTitle.includes('Postcard')) ticketTypeKey = 'mulmed_postcard';
+    else if (embedTitle.includes('Sticker')) ticketTypeKey = 'mulmed_sticker';
+    else if (embedTitle.includes('Paper Bag')) ticketTypeKey = 'mulmed_paper_bag';
+    else if (embedTitle.includes('Dus Kyou')) ticketTypeKey = 'mulmed_dus_kyou';
+    else if (embedTitle.includes('Other Offset')) ticketTypeKey = 'mulmed_other_offset';
+    else if (embedTitle.includes('Thematic Sale')) ticketTypeKey = 'mulmed_thematic_sale';
+    else if (embedTitle.includes('SP Sale')) ticketTypeKey = 'mulmed_sp_sale';
+    else if (embedTitle.includes('Campaign')) ticketTypeKey = 'mulmed_campaign';
+    else if (embedTitle.includes('Give Away')) ticketTypeKey = 'mulmed_give_away';
+    else if (embedTitle.includes('Event')) ticketTypeKey = 'mulmed_event';
+    else if (embedTitle.includes('Project')) ticketTypeKey = 'mulmed_project';
 
     // Fetch staff members
     const staffMembers = new Map();
 
-    const userIds = TICKET_USERS[modalId] || [];
+    const userIds = TICKET_USERS[ticketTypeKey] || [];
     for (const userId of userIds) {
       const member = await interaction.guild.members.fetch(userId).catch(() => null);
       if (member && !member.user.bot) {
@@ -809,7 +835,7 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
 
-    const roleIds = TICKET_ROLES[modalId] || [];
+    const roleIds = TICKET_ROLES[ticketTypeKey] || [];
     for (const roleId of roleIds) {
       const role = interaction.guild.roles.cache.get(roleId);
       if (role && role.members.size > 0) {
@@ -836,7 +862,7 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
-    const options = Array.from(staffMembers.values())
+    const staffOptions = Array.from(staffMembers.values())
       .slice(0, 25)
       .map((member) => ({
         label: member.displayName,
@@ -844,20 +870,7 @@ client.on('interactionCreate', async (interaction) => {
         description: member.user.tag,
       }));
 
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`update_assignee_${threadId}`)
-      .setPlaceholder('Select new assignee...')
-      .setMinValues(1)
-      .setMaxValues(Math.min(options.length, 10))
-      .addOptions(options);
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-
-    await interaction.reply({
-      content: 'Select new assignee(s) for this ticket:',
-      components: [row],
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.showModal(createEditTicketModal(threadId, staffOptions, assignedUserIds));
   }
 
   // Button click - Close Ticket
@@ -1120,6 +1133,126 @@ client.on('interactionCreate', async (interaction) => {
       return;
     }
 
+    // Edit ticket modal submission - harus dicek SEBELUM ticket creation
+    if (modalId.startsWith('modal_edit_ticket_')) {
+      const threadId = modalId.replace('modal_edit_ticket_', '');
+      const thread = interaction.channel;
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      // Get field values
+      const fields = {};
+      interaction.fields.fields.forEach((field) => {
+        if (field.type === 3 && field.values) {
+          // Multi-select for assigned_to
+          if (field.customId === 'assigned_to') {
+            fields[field.customId] = field.values;
+          } else {
+            fields[field.customId] = field.values[0];
+          }
+        } else if (field.type === 4 && field.value !== undefined) {
+          fields[field.customId] = field.value;
+        }
+      });
+
+      const newAssigneeIds = fields.assigned_to || [];
+      const editNotes = fields.edit_notes || '';
+
+      if (newAssigneeIds.length === 0) {
+        await interaction.editReply({ content: 'Please select at least one staff member.' });
+        return;
+      }
+
+      // Get ticket message
+      const messages = await thread.messages.fetch({ limit: 20 });
+      const ticketMessage = messages.find((m) =>
+        m.author.id === interaction.client.user.id &&
+        m.embeds.length > 0 &&
+        m.embeds[0]?.fields?.some(f => f.name === 'Ticket ID')
+      );
+
+      if (!ticketMessage) {
+        await interaction.editReply({ content: 'Could not find ticket message.' });
+        return;
+      }
+
+      // Get old assignees to remove from thread
+      const oldAssigneeIds = [];
+      const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
+      if (assignedField) {
+        const mentionRegex = /<@!?(\d+)>/g;
+        let match;
+        while ((match = mentionRegex.exec(assignedField.value)) !== null) {
+          oldAssigneeIds.push(match[1]);
+        }
+      }
+
+      // Get ticket creator from embed
+      const creatorId = ticketMessage.embeds[0]?.author?.name?.match(/\((\d+)\)$/)?.[1] ||
+        activeTickets.get(thread.id)?.created_by;
+
+      // Update embed
+      const oldEmbed = ticketMessage.embeds[0];
+      const newEmbed = EmbedBuilder.from(oldEmbed);
+
+      // Update Assigned To field
+      const newAssignedMentions = newAssigneeIds.map((id) => `<@${id}>`).join(', ');
+      const fieldIndex = newEmbed.data.fields?.findIndex((f) => f.name === 'Assigned To');
+      if (fieldIndex !== -1) {
+        newEmbed.data.fields[fieldIndex].value = newAssignedMentions;
+      }
+
+      // Recreate buttons
+      const editButton = new ButtonBuilder()
+        .setCustomId(`edit_assignee_${threadId}`)
+        .setLabel('Edit Assignee')
+        .setStyle(ButtonStyle.Secondary);
+
+      const closeButton = new ButtonBuilder()
+        .setCustomId(`close_ticket_${creatorId || interaction.user.id}`)
+        .setLabel('Close Ticket')
+        .setStyle(ButtonStyle.Danger);
+
+      const row = new ActionRowBuilder().addComponents(editButton, closeButton);
+
+      await ticketMessage.edit({ embeds: [newEmbed], components: [row] });
+
+      // Update database
+      try {
+        await db.updateRows('purchasing_tickets',
+          { id: threadId },
+          { assigned_to: JSON.stringify(newAssigneeIds.map(id => ({ id, name: '' }))) }
+        );
+      } catch (err) {
+        console.error('Failed to update assignee in database:', err.message);
+      }
+
+      // Remove old assignees from thread (except if they're new assignees too)
+      for (const oldId of oldAssigneeIds) {
+        if (!newAssigneeIds.includes(oldId)) {
+          await thread.members.remove(oldId).catch(() => { });
+        }
+      }
+
+      // Add new assignees to thread
+      for (const newId of newAssigneeIds) {
+        await thread.members.add(newId).catch(() => { });
+      }
+
+      // Update active tickets cache
+      const ticketData = activeTickets.get(thread.id);
+      if (ticketData) {
+        ticketData.assigned_to = JSON.stringify(newAssigneeIds.map(id => ({ id, name: '' })));
+      }
+
+      let responseContent = 'Assignee updated successfully!';
+      if (editNotes) {
+        responseContent += `\n\n**Edit Notes:** ${editNotes}`;
+      }
+      await interaction.editReply({ content: responseContent });
+      return;
+    }
+
     // Ticket creation modals
     const fields = {};
 
@@ -1222,31 +1355,18 @@ client.on('interactionCreate', async (interaction) => {
       item_id: fields.item_id ? parseInt(fields.item_id) : null,
       order_id: fields.order_id ? parseInt(fields.order_id) : null,
       notes: fields.notes || null,
-      brief: fields.brief || null,
       link: fields.link || null,
-      size: fields.size || null,
-      size_qty: fields.size_qty || null,
-      size_placement: fields.size_placement || null,
-      deadline_info: fields.deadline_info || null,
-      additional_output: fields.additional_output || null,
-      additional: fields.additional || null,
       created_by: user.id,
       created_by_name: user.displayName || user.username,
       assigned_to: JSON.stringify(assignedUserIds.map(id => ({ id, name: '' }))),
     };
 
+    // Hapus field yang kosong
     if (!ticketDbData.item_id) delete ticketDbData.item_id;
     if (!ticketDbData.order_id) delete ticketDbData.order_id;
     if (!ticketDbData.notes) delete ticketDbData.notes;
     if (!ticketDbData.priority) delete ticketDbData.priority;
-    if (!ticketDbData.brief) delete ticketDbData.brief;
     if (!ticketDbData.link) delete ticketDbData.link;
-    if (!ticketDbData.size) delete ticketDbData.size;
-    if (!ticketDbData.size_qty) delete ticketDbData.size_qty;
-    if (!ticketDbData.size_placement) delete ticketDbData.size_placement;
-    if (!ticketDbData.deadline_info) delete ticketDbData.deadline_info;
-    if (!ticketDbData.additional_output) delete ticketDbData.additional_output;
-    if (!ticketDbData.additional) delete ticketDbData.additional;
 
     try {
       await db.insertRow('purchasing_tickets', ticketDbData);
@@ -1392,33 +1512,33 @@ function createTicketEmbed(modalId, fields, user) {
     modal_new_item_preorder: 'Purchasing Ticket - New DB Request',
     modal_kompen: 'Purchasing Ticket - Kompensasi',
     // Digital Design
-    mulmed_kolase: 'Multimedia Ticket - Kolase',
-    mulmed_singpost: 'Multimedia Ticket - Singpost',
-    mulmed_announcement: 'Multimedia Ticket - Announcement',
-    mulmed_monthly_design: 'Multimedia Ticket - Monthly Design',
-    mulmed_other: 'Multimedia Ticket - Other',
+    modal_mulmed_kolase: 'Multimedia Ticket - Kolase',
+    modal_mulmed_singpost: 'Multimedia Ticket - Singpost',
+    modal_mulmed_announcement: 'Multimedia Ticket - Announcement',
+    modal_mulmed_monthly_design: 'Multimedia Ticket - Monthly Design',
+    modal_mulmed_other: 'Multimedia Ticket - Other',
     // Single Printing
-    mulmed_store_design: 'Multimedia Ticket - Store Design',
-    mulmed_standee: 'Multimedia Ticket - Standee',
-    mulmed_banner: 'Multimedia Ticket - Banner',
-    mulmed_wallpaper: 'Multimedia Ticket - Wallpaper',
-    mulmed_other_print: 'Multimedia Ticket - Other Printing',
+    modal_mulmed_store_design: 'Multimedia Ticket - Store Design',
+    modal_mulmed_standee: 'Multimedia Ticket - Standee',
+    modal_mulmed_banner: 'Multimedia Ticket - Banner',
+    modal_mulmed_wallpaper: 'Multimedia Ticket - Wallpaper',
+    modal_mulmed_other_print: 'Multimedia Ticket - Other Printing',
     // Offset Printing
-    mulmed_brosur: 'Multimedia Ticket - Brosur',
-    mulmed_kipas: 'Multimedia Ticket - Kipas',
-    mulmed_postcard: 'Multimedia Ticket - Postcard',
-    mulmed_sticker: 'Multimedia Ticket - Sticker',
-    mulmed_paper_bag: 'Multimedia Ticket - Paper Bag',
-    mulmed_dus_kyou: 'Multimedia Ticket - Dus Kyou',
-    mulmed_other_offset: 'Multimedia Ticket - Other Offset',
+    modal_mulmed_brosur: 'Multimedia Ticket - Brosur',
+    modal_mulmed_kipas: 'Multimedia Ticket - Kipas',
+    modal_mulmed_postcard: 'Multimedia Ticket - Postcard',
+    modal_mulmed_sticker: 'Multimedia Ticket - Sticker',
+    modal_mulmed_paper_bag: 'Multimedia Ticket - Paper Bag',
+    modal_mulmed_dus_kyou: 'Multimedia Ticket - Dus Kyou',
+    modal_mulmed_other_offset: 'Multimedia Ticket - Other Offset',
     // Promotional Design
-    mulmed_thematic_sale: 'Multimedia Ticket - Thematic Sale',
-    mulmed_sp_sale: 'Multimedia Ticket - SP Sale',
-    mulmed_campaign: 'Multimedia Ticket - Campaign',
-    mulmed_give_away: 'Multimedia Ticket - Give Away',
+    modal_mulmed_thematic_sale: 'Multimedia Ticket - Thematic Sale',
+    modal_mulmed_sp_sale: 'Multimedia Ticket - SP Sale',
+    modal_mulmed_campaign: 'Multimedia Ticket - Campaign',
+    modal_mulmed_give_away: 'Multimedia Ticket - Give Away',
     // Event Design
-    mulmed_event: 'Multimedia Ticket - Event',
-    mulmed_project: 'Multimedia Ticket - Project',
+    modal_mulmed_event: 'Multimedia Ticket - Event',
+    modal_mulmed_project: 'Multimedia Ticket - Project',
   };
 
   const embed = new EmbedBuilder()
