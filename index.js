@@ -426,7 +426,11 @@ client.on('interactionCreate', async (interaction) => {
     // Store sub_type in interaction for later use
     interaction.mulmedSubType = subType;
 
-    await interaction.showModal(modalFn(staffOptions));
+    // Get special note for this sub-type
+    const ticketTypeKey = `mulmed_${subType}`;
+    const specialNote = TICKET_SPECIAL_NOTES[ticketTypeKey] || null;
+
+    await interaction.showModal(modalFn(staffOptions, specialNote));
   }
 
   // Select menu - Single Printing sub-type selection
@@ -496,7 +500,11 @@ client.on('interactionCreate', async (interaction) => {
     // Store sub_type in interaction for later use
     interaction.mulmedSubType = subType;
 
-    await interaction.showModal(modalFn(staffOptions));
+    // Get special note for this sub-type
+    const ticketTypeKey = `mulmed_${subType}`;
+    const specialNote = TICKET_SPECIAL_NOTES[ticketTypeKey] || null;
+
+    await interaction.showModal(modalFn(staffOptions, specialNote));
   }
 
   // Select menu - Offset Printing sub-type selection
@@ -566,7 +574,11 @@ client.on('interactionCreate', async (interaction) => {
     // Store sub_type in interaction for later use
     interaction.mulmedSubType = subType;
 
-    await interaction.showModal(modalFn(staffOptions));
+    // Get special note for this sub-type
+    const ticketTypeKey = `mulmed_${subType}`;
+    const specialNote = TICKET_SPECIAL_NOTES[ticketTypeKey] || null;
+
+    await interaction.showModal(modalFn(staffOptions, specialNote));
   }
 
   // Select menu - Promotional Design sub-type selection
@@ -636,7 +648,11 @@ client.on('interactionCreate', async (interaction) => {
     // Store sub_type in interaction for later use
     interaction.mulmedSubType = subType;
 
-    await interaction.showModal(modalFn(staffOptions));
+    // Get special note for this sub-type
+    const ticketTypeKey = `mulmed_${subType}`;
+    const specialNote = TICKET_SPECIAL_NOTES[ticketTypeKey] || null;
+
+    await interaction.showModal(modalFn(staffOptions, specialNote));
   }
 
   // Select menu - Event Design sub-type selection
@@ -706,7 +722,11 @@ client.on('interactionCreate', async (interaction) => {
     // Store sub_type in interaction for later use
     interaction.mulmedSubType = subType;
 
-    await interaction.showModal(modalFn(staffOptions));
+    // Get special note for this sub-type
+    const ticketTypeKey = `mulmed_${subType}`;
+    const specialNote = TICKET_SPECIAL_NOTES[ticketTypeKey] || null;
+
+    await interaction.showModal(modalFn(staffOptions, specialNote));
   }
 
   // Button click - Edit Assignee
@@ -1031,7 +1051,7 @@ client.on('interactionCreate', async (interaction) => {
       if (feedbackChannel) {
         const threadUrl = `https://discord.com/channels/${interaction.guild.id}/${pendingFeedback.threadId}`;
         const feedbackEmbed = new EmbedBuilder()
-          .setTitle('Purchasing-Ticket Feedback')
+          .setTitle(isMulmed ? 'Multimedia-Ticket Feedback' : 'Purchasing-Ticket Feedback')
           .setColor(0x808080)
           .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
           .addFields(
