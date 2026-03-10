@@ -30,44 +30,44 @@ const activeTickets = new Map();
 
 // Role IDs for each ticket type
 const TICKET_ROLES = {
-  modal_eta_ppo: ['1480454775429664921', '1480454881134247966'],
-  modal_eta_ureq: ['1480455080833450034'],
-  modal_revive: ['1480109576589152327'],
-  modal_restock: ['1480109576589152327'],
+  modal_eta_ppo: ['1300285037241045073', '1337705127703871488'],
+  modal_eta_ureq: ['1336223205601316936'],
+  modal_revive: ['1204414544550821978'],
+  modal_restock: ['1204414544550821978'],
   // Digital Design
-  mulmed_announcement: ['1480109703408390237'],
-  mulmed_other: ['1480109703408390237'],
+  mulmed_announcement: ['1204414544550821978'],
+  mulmed_other: ['1204414544550821978'],
   // Single Printing
-  mulmed_store_design: ['1480109703408390237'],
-  mulmed_standee: ['1480109703408390237'],
-  mulmed_banner: ['1480109703408390237'],
-  mulmed_wallpaper: ['1480109703408390237'],
-  mulmed_other_print: ['1480109703408390237'],
+  mulmed_store_design: ['1204414544550821978'],
+  mulmed_standee: ['1204414544550821978'],
+  mulmed_banner: ['1204414544550821978'],
+  mulmed_wallpaper: ['1204414544550821978'],
+  mulmed_other_print: ['1204414544550821978'],
   // Offset Printing
-  mulmed_brosur: ['1480109703408390237'],
-  mulmed_kipas: ['1480109703408390237'],
-  mulmed_postcard: ['1480109703408390237'],
-  mulmed_sticker: ['1480109703408390237'],
-  mulmed_paper_bag: ['1480109703408390237'],
-  mulmed_dus_kyou: ['1480109703408390237'],
-  mulmed_other_offset: ['1480109703408390237'],
+  mulmed_brosur: ['1204414544550821978'],
+  mulmed_kipas: ['1204414544550821978'],
+  mulmed_postcard: ['1204414544550821978'],
+  mulmed_sticker: ['1204414544550821978'],
+  mulmed_paper_bag: ['1204414544550821978'],
+  mulmed_dus_kyou: ['1204414544550821978'],
+  mulmed_other_offset: ['1204414544550821978'],
   // Promotional Design
-  mulmed_thematic_sale: ['1480109703408390237'],
-  mulmed_sp_sale: ['1480109703408390237'],
-  mulmed_campaign: ['1480109703408390237'],
-  mulmed_give_away: ['1480109703408390237'],
+  mulmed_thematic_sale: ['1204414544550821978'],
+  mulmed_sp_sale: ['1204414544550821978'],
+  mulmed_campaign: ['1204414544550821978'],
+  mulmed_give_away: ['1204414544550821978'],
   // Event Design
-  mulmed_event: ['1480109703408390237'],
-  mulmed_project: ['1480109703408390237'],
+  mulmed_event: ['1204414544550821978'],
+  mulmed_project: ['1204414544550821978'],
 };
 
 // User IDs for specific ticket types (not roles)
 const TICKET_USERS = {
   // Purchasing tickets
-  modal_kompen: ['1336899680197542030', '1317666401473007686'],
-  modal_new_item_preorder: ['1336899680197542030', '1317666401473007686', '896347272307154955', '628815933208657921'],
+  modal_kompen: ['392321900577161219', '421215427696394241'],
+  modal_new_item_preorder: ['392321900577161219', '1155539420871667824', '628815933208657921', '651993926986629140'],
   // Multimedia tickets - direct user assignments
-  mulmed_kolase: ['463834579799638056'],
+  mulmed_kolase: ['463834579799638056', '286790867329613824'],
   mulmed_singpost: ['463834579799638056', '915811508561272894'],
   mulmed_monthly_design: ['463834579799638056', '915811508561272894'],
 };
@@ -761,27 +761,16 @@ client.on('interactionCreate', async (interaction) => {
     // Check if this is a multimedia ticket
     const isMultimediaTicket = ticketMessage.embeds[0]?.title?.includes('Multimedia Ticket');
 
-    if (isMultimediaTicket) {
-      // Allow creator or assigned staff to edit for multimedia tickets
-      const isCreator = creatorId && interaction.user.id === creatorId;
-      const isAssignee = assignedUserIds.includes(interaction.user.id);
+    // Allow creator or assigned staff to edit for both multimedia and purchasing tickets
+    const isCreator = creatorId && interaction.user.id === creatorId;
+    const isAssignee = assignedUserIds.includes(interaction.user.id);
 
-      if (!isCreator && !isAssignee) {
-        await interaction.reply({
-          content: '❌ Only the ticket creator or assigned staff can edit assignees.',
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
-    } else {
-      // Original behavior for purchasing tickets - only creator can edit
-      if (creatorId && interaction.user.id !== creatorId) {
-        await interaction.reply({
-          content: '❌ Only the ticket creator can edit assignees.',
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
-      }
+    if (!isCreator && !isAssignee) {
+      await interaction.reply({
+        content: '❌ Only the ticket creator or assigned staff can edit assignees.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
     }
 
     // Get ticket type from title
@@ -932,6 +921,20 @@ client.on('interactionCreate', async (interaction) => {
     if (assigneeIds.length === 0) {
       // No assignees, just close
       await interaction.reply({ content: 'Closing ticket...', flags: MessageFlags.Ephemeral });
+
+      // Remove all members from thread (except bot)
+      const members = await thread.members.fetch();
+      for (const [memberId] of members) {
+        if (memberId !== interaction.client.user.id) {
+          try {
+            await thread.members.remove(memberId);
+            console.log(`Removed member ${memberId} from thread ${thread.id}`);
+          } catch (err) {
+            console.error(`Failed to remove member ${memberId}:`, err.message);
+          }
+        }
+      }
+
       await thread.setArchived(true);
       return;
     }
@@ -1124,9 +1127,15 @@ client.on('interactionCreate', async (interaction) => {
 
         // Remove all members from thread (except bot)
         const members = await thread.members.fetch();
+        console.log(`Closing ticket ${thread.id} - Members to remove: ${Array.from(members.keys()).filter(id => id !== interaction.client.user.id).join(', ')}`);
         for (const [memberId] of members) {
           if (memberId !== interaction.client.user.id) {
-            await thread.members.remove(memberId).catch(() => { });
+            try {
+              await thread.members.remove(memberId);
+              console.log(`Removed member ${memberId} from thread ${thread.id}`);
+            } catch (err) {
+              console.error(`Failed to remove member ${memberId}:`, err.message);
+            }
           }
         }
 
@@ -1182,20 +1191,44 @@ client.on('interactionCreate', async (interaction) => {
         return;
       }
 
-      // Get old assignees to remove from thread
+      // Get ticket creator from embed (need this early for filtering)
+      const creatorId = ticketMessage.embeds[0]?.author?.name?.match(/\((\d+)\)$/)?.[1] ||
+        activeTickets.get(thread.id)?.created_by;
+
+      // Get old assignees from BOTH thread members AND embed field
       const oldAssigneeIds = [];
+
+      // From thread members (actual people in the thread)
+      try {
+        const threadMembers = await thread.members.fetch();
+        threadMembers.forEach((member) => {
+          // Exclude bot and ticket creator
+          if (member.id !== interaction.client.user.id && member.id !== creatorId) {
+            oldAssigneeIds.push(member.id);
+          }
+        });
+      } catch (err) {
+        console.error('Failed to fetch thread members:', err.message);
+      }
+
+      // Also from embed field (for backup/fallback)
       const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
       if (assignedField) {
         const mentionRegex = /<@!?(\d+)>/g;
         let match;
         while ((match = mentionRegex.exec(assignedField.value)) !== null) {
-          oldAssigneeIds.push(match[1]);
+          if (!oldAssigneeIds.includes(match[1])) {
+            oldAssigneeIds.push(match[1]);
+          }
         }
       }
 
-      // Get ticket creator from embed
-      const creatorId = ticketMessage.embeds[0]?.author?.name?.match(/\((\d+)\)$/)?.[1] ||
-        activeTickets.get(thread.id)?.created_by;
+      // Remove duplicates
+      const uniqueOldIds = [...new Set(oldAssigneeIds)];
+      const toRemove = uniqueOldIds.filter(id => !newAssigneeIds.includes(id));
+
+      console.log(`Edit assignee - Thread members: ${uniqueOldIds.join(', ')}, New: ${newAssigneeIds.join(', ')}`);
+      console.log(`To remove: ${toRemove.join(', ') || '(none)'}`);
 
       // Update embed
       const oldEmbed = ticketMessage.embeds[0];
@@ -1233,16 +1266,32 @@ client.on('interactionCreate', async (interaction) => {
         console.error('Failed to update assignee in database:', err.message);
       }
 
-      // Remove old assignees from thread (except if they're new assignees too)
-      for (const oldId of oldAssigneeIds) {
-        if (!newAssigneeIds.includes(oldId)) {
-          await thread.members.remove(oldId).catch(() => { });
+      // Remove old assignees from thread (skip creator as they cannot be removed from own thread)
+      for (const oldId of toRemove) {
+        if (oldId === creatorId) {
+          console.log(`Skipping removal of creator ${oldId} from thread ${threadId}`);
+          continue;
+        }
+        try {
+          await thread.members.remove(oldId);
+          console.log(`Removed assignee ${oldId} from thread ${threadId}`);
+        } catch (err) {
+          if (err.code === 50001 || err.message.includes('Missing Access')) {
+            console.log(`Cannot remove member ${oldId} (likely thread owner or missing permissions)`);
+          } else {
+            console.error(`Failed to remove assignee ${oldId}:`, err.message);
+          }
         }
       }
 
       // Add new assignees to thread
       for (const newId of newAssigneeIds) {
-        await thread.members.add(newId).catch(() => { });
+        try {
+          await thread.members.add(newId);
+          console.log(`Added assignee ${newId} to thread ${threadId}`);
+        } catch (err) {
+          console.error(`Failed to add assignee ${newId}:`, err.message);
+        }
       }
 
       // Update active tickets cache
@@ -1588,7 +1637,7 @@ function getChannelForTicket(modalId) {
     modal_kompen: process.env.CHANNEL_KOMPEN,
     // Multimedia channels (with modal_ prefix)
     // Digital Design sub-types (with modal_ prefix)
-    modal_mulmed_kolase: process.env.CHANNEL_DIGITAL,
+    modal_mulmed_kolase: process.env.CHANNEL_KOLASE,
     modal_mulmed_singpost: process.env.CHANNEL_DIGITAL,
     modal_mulmed_announcement: process.env.CHANNEL_DIGITAL,
     modal_mulmed_monthly_design: process.env.CHANNEL_DIGITAL,
@@ -1702,6 +1751,12 @@ async function restoreButtons(client) {
           console.log(`Restored button on ticket ${ticket.id}`);
         }
       } catch (err) {
+        // If missing access, mark ticket as closed and skip silently
+        if (err.code === 50001 || err.message.includes('Missing Access')) {
+          await db.updateRows('purchasing_tickets', { id: ticket.id }, { status: 'closed' })
+            .catch(() => {});
+          continue;
+        }
         console.error(`Error restoring ticket ${ticket.id}:`, err.message);
       }
     }

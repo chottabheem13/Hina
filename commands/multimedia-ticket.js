@@ -6,11 +6,11 @@ const {
 } = require('discord.js');
 
 const TICKET_TYPES = [
-  { label: 'Digital Design', value: 'digital_design', description: 'Request digital design services' },
-  { label: 'Single Printing', value: 'single_printing', description: 'Request single printing services' },
-  { label: 'Offset Printing', value: 'offset_printing', description: 'Request offset printing services' },
-  { label: 'Promotional Design', value: 'promotional_design', description: 'Request promotional design services' },
-  { label: 'Event Design', value: 'event_design', description: 'Request event design services' },
+  { label: 'Digital Design', value: 'digital_design', description: 'Kolase, Singpost, Announcement, Monthly Design' },
+  { label: 'Single Printing', value: 'single_printing', description: 'Store Design, Standee, Banner, Wallpaper, Other' },
+  { label: 'Offset Printing', value: 'offset_printing', description: 'Brosur, Kipas, Postcard, Sticker, Pasper Bag, Dus Kyou, Other' },
+  { label: 'Promotional Design', value: 'promotional_design', description: 'Thematic Sale, Special Sale, Campaign, Give Away' },
+  { label: 'Event Design', value: 'event_design', description: 'Event, Project' },
 ];
 
 module.exports = {
