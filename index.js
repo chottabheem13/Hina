@@ -15,7 +15,8 @@ const {
 
 const ticketCommand = require('./commands/purchasing-ticket');
 const mulmedCommand = require('./commands/multimedia-ticket');
-const { modals, createFeedbackModal, createEditTicketModal } = require('./modals/ticketModals');
+const warehouseCommand = require('./commands/warehouse-ticket');
+const { modals, createFeedbackModal, createEditTicketModal, createWarehouseFeedbackModal } = require('./modals/ticketModals');
 const db = require('./database/db');
 
 const client = new Client({
@@ -35,30 +36,35 @@ const TICKET_ROLES = {
   modal_revive: ['1204414544550821978'],
   modal_restock: ['1204414544550821978'],
   // Digital Design
-  mulmed_announcement: ['1204414544550821978'],
-  mulmed_other: ['1204414544550821978'],
+  mulmed_announcement: ['1336185533965144148'],
+  mulmed_other: ['1336185533965144148'],
   // Single Printing
-  mulmed_store_design: ['1204414544550821978'],
-  mulmed_standee: ['1204414544550821978'],
-  mulmed_banner: ['1204414544550821978'],
-  mulmed_wallpaper: ['1204414544550821978'],
-  mulmed_other_print: ['1204414544550821978'],
+  mulmed_store_design: ['1336185533965144148'],
+  mulmed_standee: ['1336185533965144148'],
+  mulmed_banner: ['1336185533965144148'],
+  mulmed_wallpaper: ['1336185533965144148'],
+  mulmed_other_print: ['1336185533965144148'],
   // Offset Printing
-  mulmed_brosur: ['1204414544550821978'],
-  mulmed_kipas: ['1204414544550821978'],
-  mulmed_postcard: ['1204414544550821978'],
-  mulmed_sticker: ['1204414544550821978'],
-  mulmed_paper_bag: ['1204414544550821978'],
-  mulmed_dus_kyou: ['1204414544550821978'],
-  mulmed_other_offset: ['1204414544550821978'],
+  mulmed_brosur: ['1336185533965144148'],
+  mulmed_kipas: ['1336185533965144148'],
+  mulmed_postcard: ['1336185533965144148'],
+  mulmed_sticker: ['1336185533965144148'],
+  mulmed_paper_bag: ['1336185533965144148'],
+  mulmed_dus_kyou: ['1336185533965144148'],
+  mulmed_other_offset: ['1336185533965144148'],
   // Promotional Design
-  mulmed_thematic_sale: ['1204414544550821978'],
-  mulmed_sp_sale: ['1204414544550821978'],
-  mulmed_campaign: ['1204414544550821978'],
-  mulmed_give_away: ['1204414544550821978'],
+  mulmed_thematic_sale: ['1336185533965144148'],
+  mulmed_sp_sale: ['1336185533965144148'],
+  mulmed_campaign: ['1336185533965144148'],
+  mulmed_give_away: ['1336185533965144148'],
   // Event Design
-  mulmed_event: ['1204414544550821978'],
-  mulmed_project: ['1204414544550821978'],
+  mulmed_event: ['1336185533965144148'],
+  mulmed_project: ['1336185533965144148'],
+  // Warehouse tickets
+  wh_cek_fisik: ['1204414986815012906'], // Will use ROLE_WH_OPERATION from env
+  wh_pindah_fisik: ['1204414986815012906'], // Will use ROLE_WH_OPERATION from env
+  wh_pick: ['1204414986815012906'], // Will use ROLE_WH_OPERATION from env
+  wh_stock_mgmt: ['1481152177492852840'], // Will use ROLE_WH_SUPERVISOR from env
 };
 
 // User IDs for specific ticket types (not roles)
@@ -70,6 +76,18 @@ const TICKET_USERS = {
   mulmed_kolase: ['463834579799638056', '286790867329613824'],
   mulmed_singpost: ['463834579799638056', '915811508561272894'],
   mulmed_monthly_design: ['463834579799638056', '915811508561272894'],
+  // Warehouse tickets - direct user assignments
+  wh_omega: [],
+  wh_delta: [],
+  wh_ss: [],
+  wh_op: [],
+  wh_wsr: [],
+  wh_pickup_pelunasan: [],
+  wh_return_monitor: [],
+  wh_bde: [],
+  wh_dachi: [],
+  wh_give_away: [],
+  wh_pick_other: [],
 };
 
 // Special notes for multimedia tickets indicating which team members should handle each ticket type
@@ -97,13 +115,14 @@ const TICKET_SPECIAL_NOTES = {
 client.commands = new Collection();
 client.commands.set(ticketCommand.data.name, ticketCommand);
 client.commands.set(mulmedCommand.data.name, mulmedCommand);
+client.commands.set(warehouseCommand.data.name, warehouseCommand);
 
 // Register slash commands
 client.once('clientReady', async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-  const commands = [ticketCommand.data.toJSON(), mulmedCommand.data.toJSON()];
+  const commands = [ticketCommand.data.toJSON(), mulmedCommand.data.toJSON(), warehouseCommand.data.toJSON()];
 
   try {
     // Register globally (use GUILD_ID for faster testing)
@@ -725,6 +744,171 @@ client.on('interactionCreate', async (interaction) => {
     await interaction.showModal(modalFn(staffOptions, specialNote));
   }
 
+  // Warehouse category select (first dropdown)
+  if (interaction.isStringSelectMenu() && interaction.customId === 'warehouse_category_select') {
+    const category = interaction.values[0];
+
+    let subOptions = [];
+
+    // Cek Fisik
+    if (category === 'cek_fisik') {
+      subOptions = [
+        { label: 'Omega', value: 'omega', description: 'Cek Fisik - Omega' },
+        { label: 'Delta', value: 'delta', description: 'Cek Fisik - Delta' },
+        { label: 'SS', value: 'ss', description: 'Cek Fisik - SS' },
+        { label: 'OP', value: 'op', description: 'Cek Fisik - OP' },
+      ];
+    }
+    // Pindah Fisik
+    else if (category === 'pindah_fisik') {
+      subOptions = [
+        { label: 'WSR', value: 'wsr', description: 'Pindah Fisik - WSR' },
+        { label: 'Pickup Pelunasan', value: 'pickup_pelunasan', description: 'Pindah Fisik - Pickup Pelunasan' },
+        { label: 'Retur Monitor', value: 'return_monitor', description: 'Pindah Fisik - Retur Monitor' },
+        { label: 'BDE', value: 'bde', description: 'Pindah Fisik - BDE' },
+      ];
+    }
+    // WH Pick
+    else if (category === 'wh_pick') {
+      subOptions = [
+        { label: 'Dachi', value: 'dachi', description: 'WH Pick - Dachi' },
+        { label: 'Give Away', value: 'give_away', description: 'WH Pick - Give Away' },
+        { label: 'Other', value: 'wh_pick_other', description: 'WH Pick - Other' },
+      ];
+    }
+    // WH Stock Management
+    else if (category === 'wh_stock_mgmt') {
+      subOptions = [
+        { label: 'WS Kor', value: 'ws_kor', description: 'WH Stock Management - WS Kor' },
+        { label: 'Adjust Stock (QTY)', value: 'adjust_stock_qty', description: 'WH Stock Management - Adjust Stock (QTY)' },
+        { label: 'Adjust Stock (Transfer)', value: 'adjust_stock_transfer', description: 'WH Stock Management - Adjust Stock (Transfer)' },
+      ];
+    }
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`warehouse_subtype_${category}`)
+      .setPlaceholder('Select sub type...')
+      .addOptions(subOptions);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    await interaction.update({
+      content: 'Select the specific type:',
+      components: [row],
+    });
+  }
+
+  // Warehouse subtype select (second dropdown) - Cek Fisik
+  if (interaction.isStringSelectMenu() && interaction.customId === 'warehouse_subtype_cek_fisik') {
+    const subType = interaction.values[0];
+    await handleWarehouseSubType(interaction, subType, 'cek_fisik');
+  }
+
+  // Warehouse subtype select - Pindah Fisik
+  if (interaction.isStringSelectMenu() && interaction.customId === 'warehouse_subtype_pindah_fisik') {
+    const subType = interaction.values[0];
+    await handleWarehouseSubType(interaction, subType, 'pindah_fisik');
+  }
+
+  // Warehouse subtype select - WH Pick
+  if (interaction.isStringSelectMenu() && interaction.customId === 'warehouse_subtype_wh_pick') {
+    const subType = interaction.values[0];
+    await handleWarehouseSubType(interaction, subType, 'wh_pick');
+  }
+
+  // Warehouse subtype select - WH Stock Management
+  if (interaction.isStringSelectMenu() && interaction.customId === 'warehouse_subtype_wh_stock_mgmt') {
+    const subType = interaction.values[0];
+    await handleWarehouseSubType(interaction, subType, 'wh_stock_mgmt');
+  }
+
+  // Button click - Close Warehouse Ticket
+
+// Helper function to handle warehouse subtype selection
+async function handleWarehouseSubType(interaction, subType, category) {
+  const modalFn = modals[`wh_${subType}`];
+
+  if (!modalFn) {
+    await interaction.update({
+      content: `Unknown sub-type: **${subType}**`,
+      components: [],
+    });
+    return;
+  }
+
+  // Fetch staff members
+  const staffMembers = new Map();
+
+  // First, try TICKET_USERS (specific user assignments)
+  const userIds = TICKET_USERS[`wh_${subType}`] || [];
+  for (const userId of userIds) {
+    const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    if (member && !member.user.bot) {
+      staffMembers.set(member.id, member);
+    }
+  }
+
+  // If no specific users, fallback to role
+  if (staffMembers.size === 0) {
+    // Check if category already has 'wh_' prefix to avoid double prefix
+    let roleKey = category.startsWith('wh_') ? category : `wh_${category}`;
+
+    // Map WH Stock Management subtypes to the same role
+    if (subType === 'ws_kor' || subType === 'adjust_stock_qty' || subType === 'adjust_stock_transfer') {
+      roleKey = 'wh_stock_mgmt';
+    }
+
+    const roleIds = TICKET_ROLES[roleKey] || [];
+
+    // First, try to get from cache
+    for (const rid of roleIds) {
+      const role = interaction.guild.roles.cache.get(rid);
+      if (role && role.members.size > 0) {
+        role.members.forEach((member) => {
+          if (!member.user.bot) staffMembers.set(member.id, member);
+        });
+      }
+    }
+
+    // If still empty from cache, fetch all members to ensure role data is loaded
+    if (staffMembers.size === 0 && roleIds.length > 0) {
+      try {
+        await interaction.guild.members.fetch();
+
+        for (const rid of roleIds) {
+          const role = interaction.guild.roles.cache.get(rid);
+          if (role) {
+            role.members.forEach((member) => {
+              if (!member.user.bot) staffMembers.set(member.id, member);
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Role member fetch failed:', e.message);
+      }
+    }
+  }
+
+  // Convert to options for select menu
+  const staffOptions = Array.from(staffMembers.values())
+    .slice(0, 25)
+    .map((member) => ({
+      label: member.displayName,
+      value: member.id,
+      description: member.user.tag,
+    }));
+
+  // Store temp data in pendingTickets for modal submission
+  const tempId = Date.now().toString(36);
+  pendingTickets.set(`wh_temp_${tempId}`, {
+    subType,
+    category,
+  });
+
+  // Pass tempId to modal function for customId suffix
+  await interaction.showModal(modalFn(staffOptions, tempId));
+}
+
   // Button click - Edit Assignee
   if (interaction.isButton() && interaction.customId.startsWith('edit_assignee_')) {
     const threadId = interaction.customId.replace('edit_assignee_', '');
@@ -758,10 +942,14 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
 
-    // Check if this is a multimedia ticket
+    // Check if this is a multimedia or warehouse ticket
     const isMultimediaTicket = ticketMessage.embeds[0]?.title?.includes('Multimedia Ticket');
+    const isWarehouseTicket = ticketMessage.embeds[0]?.title?.includes('Cek Fisik') ||
+                              ticketMessage.embeds[0]?.title?.includes('Pindah Fisik') ||
+                              ticketMessage.embeds[0]?.title?.includes('WH PICK') ||
+                              ticketMessage.embeds[0]?.title?.includes('WH Stock Management');
 
-    // Allow creator or assigned staff to edit for both multimedia and purchasing tickets
+    // Allow creator or assigned staff to edit for multimedia, purchasing, and warehouse tickets
     const isCreator = creatorId && interaction.user.id === creatorId;
     const isAssignee = assignedUserIds.includes(interaction.user.id);
 
@@ -777,8 +965,17 @@ client.on('interactionCreate', async (interaction) => {
     const embedTitle = ticketMessage.embeds[0]?.title || '';
     let ticketTypeKey = null;
 
+    // Warehouse ticket types (check first to avoid conflicts) - using category grouping
+    if (embedTitle.includes('Cek Fisik')) ticketTypeKey = 'wh_cek_fisik';
+    else if (embedTitle.includes('Pindah Fisik')) ticketTypeKey = 'wh_pindah_fisik';
+    else if (embedTitle.includes('WH PICK')) ticketTypeKey = 'wh_pick';
+    else if (embedTitle.includes('WS-KOR') || embedTitle.includes('Adjust Stock (QTY)') || embedTitle.includes('Adjust Stock (Transfer)')) {
+      // All WH Stock Management subtypes use the same role
+      ticketTypeKey = 'wh_stock_mgmt';
+    }
+    else if (embedTitle.includes('WH Stock Management')) ticketTypeKey = 'wh_stock_mgmt';
     // Purchasing ticket types
-    if (embedTitle.includes('ETA (General)') || embedTitle.includes('PPO') || embedTitle.includes('PST')) ticketTypeKey = 'modal_eta_ppo';
+    else if (embedTitle.includes('ETA (General)') || embedTitle.includes('PPO') || embedTitle.includes('PST')) ticketTypeKey = 'modal_eta_ppo';
     else if (embedTitle.includes('ETA (UREQ)')) ticketTypeKey = 'modal_eta_ureq';
     else if (embedTitle.includes('Restock Request')) ticketTypeKey = 'modal_restock';
     else if (embedTitle.includes('Revive')) ticketTypeKey = 'modal_revive';
@@ -805,7 +1002,7 @@ client.on('interactionCreate', async (interaction) => {
     else if (embedTitle.includes('Thematic Sale')) ticketTypeKey = 'mulmed_thematic_sale';
     else if (embedTitle.includes('SP Sale')) ticketTypeKey = 'mulmed_sp_sale';
     else if (embedTitle.includes('Campaign')) ticketTypeKey = 'mulmed_campaign';
-    else if (embedTitle.includes('Give Away')) ticketTypeKey = 'mulmed_give_away';
+    else if (embedTitle.includes('Give Away') && embedTitle.includes('Multimedia')) ticketTypeKey = 'mulmed_give_away';
     else if (embedTitle.includes('Event')) ticketTypeKey = 'mulmed_event';
     else if (embedTitle.includes('Project')) ticketTypeKey = 'mulmed_project';
 
@@ -821,6 +1018,8 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     const roleIds = TICKET_ROLES[ticketTypeKey] || [];
+
+    // First, try to get from cache
     for (const roleId of roleIds) {
       const role = interaction.guild.roles.cache.get(roleId);
       if (role && role.members.size > 0) {
@@ -830,16 +1029,21 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
 
-    // Try to fetch role members if still empty
+    // If still empty from cache, fetch all members to ensure role data is loaded
     if (staffMembers.size === 0 && roleIds.length > 0) {
       try {
+        console.log(`[DEBUG] Fetching all members for warehouse edit assignee. Role IDs: ${roleIds.join(', ')}`);
         // Fetch all members to ensure role data is loaded
         await interaction.guild.members.fetch();
 
-        // Now check each role for members
+        // Now check each role for members - need to fetch role again after member fetch
         for (const roleId of roleIds) {
           const role = interaction.guild.roles.cache.get(roleId);
+          console.log(`[DEBUG] Role ${roleId}: ${role ? 'found' : 'not found'}`);
           if (role) {
+            // Fetch role members explicitly
+            await role.members.fetch();
+            console.log(`[DEBUG] Role ${roleId} has ${role.members.size} members`);
             role.members.forEach((member) => {
               if (!member.user.bot) {
                 staffMembers.set(member.id, member);
@@ -847,6 +1051,7 @@ client.on('interactionCreate', async (interaction) => {
             });
           }
         }
+        console.log(`[DEBUG] Total staff members found: ${staffMembers.size}`);
       } catch (e) {
         console.log('Role member fetch failed:', e.message);
       }
@@ -960,6 +1165,99 @@ client.on('interactionCreate', async (interaction) => {
     await interaction.showModal(createFeedbackModal(feedbackId, assigneeIds[0], assigneeName, 1, assigneeIds.length));
   }
 
+  // Button click - Close Warehouse Ticket
+  if (interaction.isButton() && interaction.customId.startsWith('close_wh_ticket_')) {
+    const parts = interaction.customId.split('_');
+    const threadId = parts[3];
+    const creatorId = parts[4];
+    const thread = interaction.channel;
+
+    // Verify we're in the right thread
+    if (thread.id !== threadId) {
+      await interaction.reply({ content: 'Invalid ticket.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // Check if the user is the ticket creator
+    if (creatorId && interaction.user.id !== creatorId) {
+      await interaction.reply({
+        content: '❌ Only the ticket creator can close this ticket.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    // Get assignees from the ticket embed
+    const messages = await thread.messages.fetch({ limit: 20 });
+    const ticketMessage = messages.find((m) =>
+      m.author.id === interaction.client.user.id &&
+      m.embeds.length > 0 &&
+      m.embeds[0]?.fields?.some(f => f.name === 'Ticket ID')
+    );
+
+    let assigneeIds = [];
+    let ticketIdFromEmbed = null;
+
+    if (ticketMessage) {
+      const assignedField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Assigned To');
+      if (assignedField) {
+        const mentionRegex = /<@!?(\d+)>/g;
+        let match;
+        while ((match = mentionRegex.exec(assignedField.value)) !== null) {
+          assigneeIds.push(match[1]);
+        }
+      }
+      const ticketIdField = ticketMessage.embeds[0]?.fields?.find((f) => f.name === 'Ticket ID');
+      if (ticketIdField) {
+        ticketIdFromEmbed = ticketIdField.value;
+      }
+    }
+
+    if (assigneeIds.length === 0) {
+      // No assignees, just close
+      await interaction.reply({ content: 'Closing warehouse ticket...', flags: MessageFlags.Ephemeral });
+
+      // Remove all members from thread (except bot)
+      const members = await thread.members.fetch();
+      for (const [memberId] of members) {
+        if (memberId !== interaction.client.user.id) {
+          try {
+            await thread.members.remove(memberId);
+            console.log(`Removed member ${memberId} from thread ${thread.id}`);
+          } catch (err) {
+            console.error(`Failed to remove member ${memberId}:`, err.message);
+          }
+        }
+      }
+
+      await thread.setArchived(true);
+      return;
+    }
+
+    // Store pending feedback for multiple assignees
+    const feedbackId = Date.now().toString(36);
+    const ticketData = activeTickets.get(thread.id);
+    pendingTickets.set(`wh_feedback_${feedbackId}`, {
+      threadId: thread.id,
+      threadName: thread.name,
+      ticketId: ticketIdFromEmbed || ticketData?.ticketId || thread.id,
+      ticketType: ticketData?.type || '',
+      isWarehouse: true,
+      dbPersisted: ticketData?.dbPersisted || false,
+      assigneeIds,
+      currentIndex: 0,
+      userId: interaction.user.id,
+      itemId: ticketData?.item_id || null,
+      orderId: ticketData?.order_id || null,
+    });
+
+    // Show modal for first assignee
+    const firstAssignee = await interaction.guild.members.fetch(assigneeIds[0]).catch(() => null);
+    const assigneeName = firstAssignee?.displayName || 'Staff';
+
+    await interaction.showModal(createWarehouseFeedbackModal(feedbackId, assigneeIds[0], assigneeName, 1, assigneeIds.length));
+  }
+
   // Button click - Next Feedback
   if (interaction.isButton() && interaction.customId.startsWith('next_feedback_')) {
     const parts = interaction.customId.split('_');
@@ -1000,9 +1298,195 @@ client.on('interactionCreate', async (interaction) => {
     ));
   }
 
+  // Button click - Next Warehouse Feedback
+  if (interaction.isButton() && interaction.customId.startsWith('next_wh_feedback_')) {
+    const parts = interaction.customId.split('_');
+    const feedbackId = parts[3];
+    const assigneeId = parts[4];
+
+    const pendingFeedback = pendingTickets.get(`wh_feedback_${feedbackId}`);
+    if (!pendingFeedback) {
+      await interaction.reply({ content: 'Feedback session expired. Closing ticket...', flags: MessageFlags.Ephemeral });
+
+      // Remove all members from thread and archive it
+      const thread = interaction.channel;
+      if (thread?.isThread()) {
+        const members = await thread.members.fetch().catch(() => null);
+        if (members) {
+          for (const [memberId] of members) {
+            if (memberId !== interaction.client.user.id) {
+              await thread.members.remove(memberId).catch(() => { });
+            }
+          }
+        }
+        await thread.setArchived(true).catch(() => { });
+        activeTickets.delete(thread.id);
+      }
+      return;
+    }
+
+    const assignee = await interaction.guild.members.fetch(assigneeId).catch(() => null);
+    const assigneeName = assignee?.displayName || 'Staff';
+
+    await interaction.showModal(createWarehouseFeedbackModal(
+      feedbackId,
+      assigneeId,
+      assigneeName,
+      pendingFeedback.currentIndex + 1,
+      pendingFeedback.assigneeIds.length
+    ));
+  }
+
   // Modal submissions
   if (interaction.isModalSubmit()) {
     const modalId = interaction.customId;
+
+    // Warehouse feedback modal submission
+    if (modalId.startsWith('modal_wh_feedback_')) {
+      const parts = modalId.split('_');
+      const feedbackId = parts[3];
+      const assigneeId = parts[4];
+
+      const pendingFeedback = pendingTickets.get(`wh_feedback_${feedbackId}`);
+      if (!pendingFeedback) {
+        await interaction.reply({ content: 'Feedback session expired. Closing ticket...', flags: MessageFlags.Ephemeral });
+
+        // Remove all members from thread and archive it
+        const thread = interaction.channel;
+        if (thread?.isThread()) {
+          const members = await thread.members.fetch().catch(() => null);
+          if (members) {
+            for (const [memberId] of members) {
+              if (memberId !== interaction.client.user.id) {
+                await thread.members.remove(memberId).catch(() => { });
+              }
+            }
+          }
+          await thread.setArchived(true).catch(() => { });
+          activeTickets.delete(thread.id);
+        }
+        return;
+      }
+
+      // Get field values
+      const fields = {};
+      interaction.fields.fields.forEach((field) => {
+        if (field.type === 3 && field.values) {
+          fields[field.customId] = field.values[0];
+        } else if (field.type === 4 && field.value !== undefined) {
+          fields[field.customId] = field.value;
+        }
+      });
+
+      const rating = fields.rating;
+      const feedback = fields.feedback || '';
+
+      // Get assignee name for database
+      const assignee = await interaction.guild.members.fetch(assigneeId).catch(() => null);
+      const assigneeName = assignee?.displayName || assignee?.user.username || 'Staff';
+
+      if (pendingFeedback.dbPersisted) {
+        try {
+          await db.insertRow('purchasing_ticket_feedbacks', {
+            ticket_id: pendingFeedback.ticketId,
+            assignee_id: assigneeId,
+            assignee_name: assigneeName,
+            rating: parseInt(rating) || 1,
+            feedback: feedback || null,
+            submitted_by: interaction.user.id,
+            submitted_by_name: interaction.user.displayName || interaction.user.username,
+            created_at: db.getWibTime(),
+          });
+        } catch (err) {
+          console.error('Failed to insert warehouse feedback into database:', err.response?.data || err.message);
+        }
+      }
+
+      // Send feedback to warehouse feedback channel
+      const feedbackChannelId = process.env.CHANNEL_WHFEEDBACK;
+      const feedbackChannel = interaction.guild.channels.cache.get(feedbackChannelId);
+      if (feedbackChannel) {
+        const threadUrl = `https://discord.com/channels/${interaction.guild.id}/${pendingFeedback.threadId}`;
+        const feedbackEmbed = new EmbedBuilder()
+          .setTitle('Warehouse-Ticket Feedback')
+          .setColor(0x808080)
+          .setAuthor({ name: interaction.user.tag, iconURL: interaction.user.displayAvatarURL() })
+          .addFields(
+            { name: 'Thread', value: `[${pendingFeedback.threadName}](${threadUrl})`, inline: true },
+            { name: 'Assigned To', value: `<@${assigneeId}>`, inline: true },
+            { name: 'Rating', value: `${'⭐'.repeat(parseInt(rating) || 0)} (${rating}/5)`, inline: true },
+            { name: 'Feedback', value: feedback || 'No feedback provided' }
+          )
+          .setTimestamp();
+        await feedbackChannel.send({ embeds: [feedbackEmbed] });
+      }
+
+      // Move to next assignee
+      pendingFeedback.currentIndex++;
+
+      if (pendingFeedback.currentIndex < pendingFeedback.assigneeIds.length) {
+        // Show button to rate next assignee
+        const nextAssigneeId = pendingFeedback.assigneeIds[pendingFeedback.currentIndex];
+        const nextAssignee = await interaction.guild.members.fetch(nextAssigneeId).catch(() => null);
+        const nextName = nextAssignee?.displayName || 'Staff';
+
+        const nextButton = new ButtonBuilder()
+          .setCustomId(`next_wh_feedback_${feedbackId}_${nextAssigneeId}`)
+          .setLabel(`Rate ${nextName} (${pendingFeedback.currentIndex + 1}/${pendingFeedback.assigneeIds.length})`)
+          .setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(nextButton);
+
+        await interaction.reply({
+          content: `Feedback submitted! Click below to rate the next staff member.`,
+          components: [row],
+          flags: MessageFlags.Ephemeral,
+        });
+      } else {
+        // All feedback collected, close the thread
+        pendingTickets.delete(`wh_feedback_${feedbackId}`);
+
+        const thread = interaction.channel;
+
+        await interaction.reply({ content: 'Thank you for your feedback! Closing ticket...', flags: MessageFlags.Ephemeral });
+
+        if (pendingFeedback.dbPersisted) {
+          try {
+            await db.updateRows('purchasing_tickets',
+              { id: pendingFeedback.ticketId },
+              { status: 'closed', closed_at: db.getWibTime() }
+            );
+          } catch (err) {
+            console.error('Failed to update warehouse ticket status:', err.response?.data || err.message);
+          }
+        }
+
+        // Remove all members from thread (except bot)
+        const members = await thread.members.fetch();
+        console.log(`Closing warehouse ticket ${thread.id} - Members to remove: ${Array.from(members.keys()).filter(id => id !== interaction.client.user.id).join(', ')}`);
+        for (const [memberId] of members) {
+          if (memberId !== interaction.client.user.id) {
+            try {
+              await thread.members.remove(memberId);
+              console.log(`Removed member ${memberId} from thread ${thread.id}`);
+            } catch (err) {
+              if (err.code === 50001 || err.message.includes('Missing Access')) {
+                console.log(`Cannot remove member ${memberId} (likely thread owner or missing permissions)`);
+              } else {
+                console.error(`Failed to remove member ${memberId}:`, err.message);
+              }
+            }
+          }
+        }
+
+        // Archive the thread
+        await thread.setArchived(true);
+
+        // Remove from active cache
+        activeTickets.delete(thread.id);
+      }
+      return;
+    }
 
     // Individual feedback modal submission
     if (modalId.startsWith('modal_feedback_')) {
@@ -1241,16 +1725,30 @@ client.on('interactionCreate', async (interaction) => {
         newEmbed.data.fields[fieldIndex].value = newAssignedMentions;
       }
 
+      // Check if this is a warehouse ticket to use correct close button format
+      const isWarehouseTicket = oldEmbed.title?.includes('Cek Fisik') ||
+                              oldEmbed.title?.includes('Pindah Fisik') ||
+                              oldEmbed.title?.includes('WH PICK') ||
+                              oldEmbed.title?.includes('WH Stock Management');
+
       // Recreate buttons
       const editButton = new ButtonBuilder()
         .setCustomId(`edit_assignee_${threadId}`)
         .setLabel('Edit Assignee')
         .setStyle(ButtonStyle.Secondary);
 
-      const closeButton = new ButtonBuilder()
-        .setCustomId(`close_ticket_${creatorId || interaction.user.id}`)
-        .setLabel('Close Ticket')
-        .setStyle(ButtonStyle.Danger);
+      let closeButton;
+      if (isWarehouseTicket) {
+        closeButton = new ButtonBuilder()
+          .setCustomId(`close_wh_ticket_${threadId}_${creatorId || interaction.user.id}`)
+          .setLabel('Close Ticket')
+          .setStyle(ButtonStyle.Danger);
+      } else {
+        closeButton = new ButtonBuilder()
+          .setCustomId(`close_ticket_${creatorId || interaction.user.id}`)
+          .setLabel('Close Ticket')
+          .setStyle(ButtonStyle.Danger);
+      }
 
       const row = new ActionRowBuilder().addComponents(editButton, closeButton);
 
@@ -1305,6 +1803,159 @@ client.on('interactionCreate', async (interaction) => {
         responseContent += `\n\n**Edit Notes:** ${editNotes}`;
       }
       await interaction.editReply({ content: responseContent });
+      return;
+    }
+
+    // Warehouse ticket creation modals
+    if (modalId.startsWith('modal_wh_')) {
+      const fields = {};
+
+      interaction.fields.fields.forEach((field) => {
+        if (field.type === 3 && field.values) {
+          if (field.customId === 'assigned_to') {
+            fields[field.customId] = field.values;
+          } else {
+            fields[field.customId] = field.values[0];
+          }
+        } else if (field.type === 4 && field.value !== undefined) {
+          fields[field.customId] = field.value;
+        }
+      });
+
+      // Get warehouse category and sub_type from pendingTickets
+      // Extract tempId from modal customId (format: modal_wh_<subtype>_<tempId>)
+      const tempId = modalId.split('_').pop();
+      const tempData = pendingTickets.get(`wh_temp_${tempId}`);
+
+      // Also extract base modalId (without tempId) for database storage
+      let baseModalId = modalId;
+      if (modalId.split('_').length > 3) {
+        const parts = modalId.split('_');
+        parts.pop(); // Remove tempId
+        baseModalId = parts.join('_');
+      }
+
+      if (!tempData) {
+        await interaction.reply({ content: 'Session expired. Please start over.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      fields.wh_category = tempData.category;
+      fields.wh_sub_type = tempData.subType;
+
+      // Clean up temp data
+      pendingTickets.delete(`wh_temp_${tempId}`);
+
+      // Check if staff was assigned
+      if (!fields.assigned_to || fields.assigned_to.length === 0) {
+        await interaction.reply({ content: 'Please select a staff member to assign.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      const assignedUserIds = Array.isArray(fields.assigned_to) ? fields.assigned_to : [fields.assigned_to];
+      const user = interaction.user;
+
+      const embed = createWarehouseTicketEmbed(modalId, fields, user);
+      const channelId = getChannelForTicket(modalId);
+      const targetChannel = interaction.guild.channels.cache.get(channelId);
+
+      if (!targetChannel) {
+        await interaction.editReply({ content: 'Target channel not found' });
+        return;
+      }
+
+      // Create thread name
+      const subTypeLabel = {
+        omega: 'OMEGA', delta: 'DELTA', ss: 'SS', op: 'OP',
+        wsr: 'WSR', pickup_pelunasan: 'PICKUP', return_monitor: 'RETMON', bde: 'BDE',
+        dachi: 'DACHI', give_away: 'GIVEAWAY', wh_pick_other: 'WH-PICK',
+        ws_kor: 'WS-KOR', adjust_stock_qty: 'ADJ-QTY', adjust_stock_transfer: 'ADJ-XFER',
+      };
+
+      // Add item_id or order_id to thread name if available
+      const identifier = fields.item_id || fields.order_id || null;
+      const nameParts = [
+        subTypeLabel[fields.wh_sub_type] || 'WH',
+        identifier,
+        user.username,
+      ].filter(Boolean).join('-').substring(0, 100);
+
+      // Create thread
+      const thread = await targetChannel.threads.create({
+        name: nameParts,
+        autoArchiveDuration: 1440,
+        reason: `Warehouse Ticket by ${user.tag}`,
+      });
+
+      // Warehouse tickets are not compatible with the purchasing DB schema.
+      const ticketDbData = {
+        id: thread.id,
+        type: baseModalId.replace('modal_', ''),
+        status: 'open',
+        item_id: fields.item_id || null,
+        order_id: fields.order_id || null,
+        notes: fields.note || fields.notes || null,
+        store_name: fields.store_name || null,
+        batch: fields.batch || null,
+        created_by: user.id,
+        created_by_name: user.displayName || user.username,
+        assigned_to: JSON.stringify(assignedUserIds.map(id => ({ id, name: '' }))),
+      };
+
+      // Remove empty fields
+      if (!ticketDbData.notes) delete ticketDbData.notes;
+      if (!ticketDbData.item_id) delete ticketDbData.item_id;
+      if (!ticketDbData.order_id) delete ticketDbData.order_id;
+      if (!ticketDbData.store_name) delete ticketDbData.store_name;
+      if (!ticketDbData.batch) delete ticketDbData.batch;
+
+      activeTickets.set(thread.id, {
+        ticketId: thread.id,
+        ...ticketDbData,
+        whCategory: fields.wh_category,
+        whSubType: fields.wh_sub_type,
+        dbPersisted: false,
+      });
+
+      // Add ticket ID and assigned staff to embed
+      embed.addFields({ name: 'Ticket ID', value: thread.id, inline: true });
+      const assignedMentions = assignedUserIds.map((id) => `<@${id}>`).join(', ');
+      embed.addFields({ name: 'Assigned To', value: assignedMentions });
+
+      // Add edit assignee and close buttons
+      const editButton = new ButtonBuilder()
+        .setCustomId(`edit_assignee_${thread.id}`)
+        .setLabel('Edit Assignee')
+        .setStyle(ButtonStyle.Primary);
+
+      const closeButton = new ButtonBuilder()
+        .setCustomId(`close_wh_ticket_${thread.id}_${user.id}`)
+        .setLabel('Close Ticket')
+        .setStyle(ButtonStyle.Danger);
+
+      const row = new ActionRowBuilder().addComponents(editButton, closeButton);
+
+      await thread.send({ embeds: [embed], components: [row] });
+
+      await thread.members.add(user.id);
+      for (const userId of assignedUserIds) {
+        try {
+          await thread.members.add(userId);
+          console.log(`[WH Ticket] Added assignee ${userId} to thread ${thread.id}`);
+        } catch (err) {
+          console.error(`[WH Ticket] Failed to add assignee ${userId}:`, err.message);
+          if (err.code === 50001 || err.message.includes('Missing Access')) {
+            console.log(`[WH Ticket] Cannot add member ${userId} - missing permissions or thread owner`);
+          }
+        }
+      }
+
+      await interaction.editReply({
+        content: `Warehouse ticket created: ${thread}`,
+        components: [],
+      });
       return;
     }
 
@@ -1558,6 +2209,70 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+function createWarehouseTicketEmbed(modalId, fields, user) {
+  // Remove tempId suffix from modalId if present (format: modal_wh_<subtype>_<tempId>)
+  let lookupModalId = modalId;
+  if (modalId.startsWith('modal_wh_') && modalId.split('_').length > 3) {
+    const parts = modalId.split('_');
+    parts.pop(); // Remove tempId
+    lookupModalId = parts.join('_');
+  }
+
+  const typeLabels = {
+    modal_wh_omega: 'Cek Fisik - Omega',
+    modal_wh_delta: 'Cek Fisik - Delta',
+    modal_wh_ss: 'Cek Fisik - SS',
+    modal_wh_op: 'Cek Fisik - OP',
+    modal_wh_wsr: 'Pindah Fisik - WSR',
+    modal_wh_pickup_pelunasan: 'Pindah Fisik - Pickup Pelunasan',
+    modal_wh_return_monitor: 'Pindah Fisik - Return Monitor',
+    modal_wh_bde: 'Pindah Fisik - BDE',
+    modal_wh_dachi: 'WH PICK - Dachi',
+    modal_wh_give_away: 'WJ PICK - Give Away',
+    modal_wh_pick_other: 'WH Pick Other',
+    modal_wh_ws_kor: 'WH Stock Management - WS Kor',
+    modal_wh_adjust_stock_qty: 'WH Stock Management - Adjust Stock (QTY)',
+    modal_wh_adjust_stock_transfer: 'WH Stock Managemenet - Adjust Stock (Transfer)',
+  };
+
+  const categoryLabels = {
+    cek_fisik: 'Cek Fisik',
+    pindah_fisik: 'Pindah Fisik',
+    wh_pick: 'WH PICK',
+    wh_stock_mgmt: 'WH Stock Management',
+  };
+
+  const embed = new EmbedBuilder()
+    .setTitle(`Warehouse Ticket: ${typeLabels[lookupModalId] || 'Unknown'}`)
+    .setColor(0x00ff00)
+    .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL() })
+    .setTimestamp();
+
+  // Add category
+  if (fields.wh_category) {
+    embed.addFields({ name: 'Category', value: categoryLabels[fields.wh_category] || fields.wh_category, inline: true });
+  }
+
+  // Add warehouse fields based on what's available
+  if (fields.item_id) {
+    embed.addFields({ name: 'Item ID', value: fields.item_id, inline: true });
+    embed.addFields({ name: 'Item Link', value: `https://kyou.id/items/${fields.item_id}` });
+  }
+  if (fields.order_id) {
+    embed.addFields({ name: 'Order ID', value: fields.order_id, inline: true });
+    embed.addFields({ name: 'Order Link', value: `https://old.kyou.id/admin/order/${fields.order_id}` });
+  }
+  if (fields.store_name) {
+    const storeLabels = { alpha: 'Alpha', beta: 'Beta', gamma: 'Gamma' };
+    embed.addFields({ name: 'Store Name', value: storeLabels[fields.store_name] || fields.store_name, inline: true });
+  }
+  if (fields.batch) embed.addFields({ name: 'Batch', value: fields.batch, inline: true });
+  if (fields.note) embed.addFields({ name: 'Note', value: fields.note });
+  if (fields.notes) embed.addFields({ name: 'Notes', value: fields.notes });
+
+  return embed;
+}
+
 function createTicketEmbed(modalId, fields, user) {
   const typeLabels = {
     modal_eta_ppo: 'Purchasing Ticket - ETA (General)',
@@ -1628,6 +2343,15 @@ function createTicketEmbed(modalId, fields, user) {
 }
 
 function getChannelForTicket(modalId) {
+  // For warehouse modals with tempId suffix (format: modal_wh_<subtype>_<tempId>)
+  // Remove the tempId suffix to get the base modalId
+  let lookupModalId = modalId;
+  if (modalId.startsWith('modal_wh_') && modalId.split('_').length > 3) {
+    const parts = modalId.split('_');
+    parts.pop(); // Remove tempId
+    lookupModalId = parts.join('_');
+  }
+
   const channelMap = {
     modal_eta_ppo: process.env.CHANNEL_PPO,
     modal_eta_ureq: process.env.CHANNEL_UREQ,
@@ -1664,8 +2388,23 @@ function getChannelForTicket(modalId) {
     // Event Design sub-types (with modal_ prefix)
     modal_mulmed_event: process.env.CHANNEL_EVENT,
     modal_mulmed_project: process.env.CHANNEL_EVENT,
+    // Warehouse channels
+    modal_wh_omega: process.env.CHANNEL_CEKFISIK,
+    modal_wh_delta: process.env.CHANNEL_CEKFISIK,
+    modal_wh_ss: process.env.CHANNEL_CEKFISIK,
+    modal_wh_op: process.env.CHANNEL_CEKFISIK,
+    modal_wh_wsr: process.env.CHANNEL_PINDAHFISIK,
+    modal_wh_pickup_pelunasan: process.env.CHANNEL_PINDAHFISIK,
+    modal_wh_return_monitor: process.env.CHANNEL_PINDAHFISIK,
+    modal_wh_bde: process.env.CHANNEL_PINDAHFISIK,
+    modal_wh_dachi: process.env.CHANNEL_WHPICK,
+    modal_wh_give_away: process.env.CHANNEL_WHPICK,
+    modal_wh_pick_other: process.env.CHANNEL_WHPICK,
+    modal_wh_ws_kor: process.env.CHANNEL_WHSTOCKMANAGEMENT,
+    modal_wh_adjust_stock_qty: process.env.CHANNEL_WHSTOCKMANAGEMENT,
+    modal_wh_adjust_stock_transfer: process.env.CHANNEL_WHSTOCKMANAGEMENT,
   };
-  return channelMap[modalId];
+  return channelMap[lookupModalId];
 }
 
 /**

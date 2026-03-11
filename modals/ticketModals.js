@@ -77,6 +77,23 @@ function createStaffField(staffOptions, specialNote = null) {
   };
 }
 
+// Helper to create store name select field
+function createStoreNameField(required = true) {
+  return {
+    id: 'store_name',
+    label: 'Store Name',
+    description: required ? 'Select store (required)' : 'Select store (optional)',
+    type: 'select',
+    placeholder: 'Select store...',
+    required,
+    options: [
+      { label: 'Alpha', value: 'alpha', description: 'Alpha Store' },
+      { label: 'Beta', value: 'beta', description: 'Beta Store' },
+      { label: 'Gamma', value: 'gamma', description: 'Gamma Store' },
+    ],
+  };
+}
+
 const modals = {
   eta_ppo: (staffOptions = []) => {
     const fields = [
@@ -767,4 +784,188 @@ const createEditTicketModal = (threadId, staffOptions, currentAssigneeIds = []) 
   return createModal(`modal_edit_ticket_${threadId}`, 'Edit Ticket Assignee', fields);
 };
 
-module.exports = { modals, closeTicketModal, createFeedbackModal, createEditTicketModal };
+// ===== WAREHOUSE TICKET MODALS =====
+
+// Cek Fisik Sub-types (Omega, Delta, SS, OP)
+const wh_omega = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_omega_${tempId}`, 'Cek Fisik - Omega', fields);
+};
+
+const wh_delta = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_delta_${tempId}`, 'Cek Fisik - Delta', fields);
+};
+
+const wh_ss = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_ss_${tempId}`, 'Cek Fisik - SS', fields);
+};
+
+const wh_op = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_op_${tempId}`, 'Cek Fisik - OP', fields);
+};
+
+// Pindah Fisik Sub-types
+const wh_wsr = (staffOptions = [], tempId = '') => {
+  const fields = [
+    createStoreNameField(true),
+    { id: 'batch', label: 'Batch', description: 'Enter batch number (required)', placeholder: 'BATCH-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_wsr_${tempId}`, 'Warehouse Ticket - WSR', fields);
+};
+
+const wh_pickup_pelunasan = (staffOptions = [], tempId = '') => {
+  const fields = [
+    createStoreNameField(true),
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (required)', placeholder: 'ORD-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_pickup_pelunasan_${tempId}`, 'Warehouse Ticket - Pickup Pelunasan', fields);
+};
+
+const wh_return_monitor = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (required)', placeholder: 'ORD-XXX' },
+    { id: 'note', label: 'Note', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_return_monitor_${tempId}`, 'Warehouse Ticket - Return Monitor', fields);
+};
+
+const wh_bde = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'batch', label: 'Batch', description: 'Enter batch number (required)', placeholder: 'BATCH-XXX' },
+    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_bde_${tempId}`, 'Warehouse Ticket - BDE', fields);
+};
+
+// WH Pick Sub-types
+const wh_dachi = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_dachi_${tempId}`, 'Warehouse Ticket - Dachi', fields);
+};
+
+const wh_give_away = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_give_away_${tempId}`, 'Warehouse Ticket - Give Away', fields);
+};
+
+const wh_pick_other = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_pick_other_${tempId}`, 'Warehouse Ticket - WH Pick Other', fields);
+};
+
+// WH Stock Management Sub-types
+const wh_ws_kor = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_ws_kor_${tempId}`, 'Warehouse Ticket - WS Kor', fields);
+};
+
+const wh_adjust_stock_qty = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_adjust_stock_qty_${tempId}`, 'Warehouse Ticket - Adjust Stock (QTY)', fields);
+};
+
+const wh_adjust_stock_transfer = (staffOptions = [], tempId = '') => {
+  const fields = [
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
+    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+  ];
+  const staffField = createStaffField(staffOptions);
+  if (staffField) fields.push(staffField);
+  return createModal(`modal_wh_adjust_stock_transfer_${tempId}`, 'Warehouse Ticket - Adjust Stock (Transfer)', fields);
+};
+
+// Add warehouse modals to the modals object
+Object.assign(modals, {
+  wh_omega, wh_delta, wh_ss, wh_op,
+  wh_wsr, wh_pickup_pelunasan, wh_return_monitor, wh_bde,
+  wh_dachi, wh_give_away, wh_pick_other,
+  wh_ws_kor, wh_adjust_stock_qty, wh_adjust_stock_transfer,
+});
+
+// Warehouse feedback modal
+const createWarehouseFeedbackModal = (feedbackId, assigneeId, assigneeName, current, total) =>
+  createModal(`modal_wh_feedback_${feedbackId}_${assigneeId}`, `Rate ${assigneeName} (${current}/${total})`, [
+    {
+      id: 'rating',
+      label: 'Rating',
+      description: `Rate ${assigneeName}'s service from 1 to 5`,
+      type: 'select',
+      placeholder: 'Select a rating...',
+      options: [
+        { label: '⭐', value: '1', description: 'Tidak puas' },
+        { label: '⭐⭐', value: '2', description: 'Kurang puas' },
+        { label: '⭐⭐⭐', value: '3', description: 'Cukup' },
+        { label: '⭐⭐⭐⭐', value: '4', description: 'Puas' },
+        { label: '⭐⭐⭐⭐⭐', value: '5', description: 'Sangat puas' },
+      ],
+    },
+    { id: 'feedback', label: 'Feedback', description: 'Share your feedback (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: `How was ${assigneeName}'s service?` },
+  ]);
+
+module.exports = { modals, closeTicketModal, createFeedbackModal, createEditTicketModal, createWarehouseFeedbackModal };
