@@ -1000,6 +1000,7 @@ async function handleWarehouseSubType(interaction, subType, category) {
     const isWarehouseTicket = ticketMessage.embeds[0]?.title?.includes('Cek Fisik') ||
                               ticketMessage.embeds[0]?.title?.includes('Pindah Fisik') ||
                               ticketMessage.embeds[0]?.title?.includes('WH PICK') ||
+                              ticketMessage.embeds[0]?.title?.includes('WH Pick') ||
                               ticketMessage.embeds[0]?.title?.includes('WH Stock Management');
 
     // Allow creator or assigned staff to edit for multimedia, purchasing, and warehouse tickets
@@ -1021,7 +1022,7 @@ async function handleWarehouseSubType(interaction, subType, category) {
     // Warehouse ticket types (check first to avoid conflicts) - using category grouping
     if (embedTitle.includes('Cek Fisik')) ticketTypeKey = 'wh_cek_fisik';
     else if (embedTitle.includes('Pindah Fisik')) ticketTypeKey = 'wh_pindah_fisik';
-    else if (embedTitle.includes('WH PICK')) ticketTypeKey = 'wh_pick';
+    else if (embedTitle.includes('WH PICK') || embedTitle.includes('WH Pick')) ticketTypeKey = 'wh_pick';
     else if (embedTitle.includes('WS-KOR') || embedTitle.includes('Adjust Stock (QTY)') || embedTitle.includes('Adjust Stock (Transfer)')) {
       // All WH Stock Management subtypes use the same role
       ticketTypeKey = 'wh_stock_mgmt';
@@ -1401,9 +1402,11 @@ async function handleWarehouseSubType(interaction, subType, category) {
       const feedbackId = parts[3];
       const assigneeId = parts[4];
 
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
       const pendingFeedback = pendingTickets.get(`wh_feedback_${feedbackId}`);
       if (!pendingFeedback) {
-        await interaction.reply({ content: 'Feedback session expired. Closing ticket...', flags: MessageFlags.Ephemeral });
+        await interaction.editReply({ content: 'Feedback session expired. Closing ticket...' });
 
         // Remove all members from thread and archive it
         const thread = interaction.channel;
@@ -1491,10 +1494,9 @@ async function handleWarehouseSubType(interaction, subType, category) {
 
         const row = new ActionRowBuilder().addComponents(nextButton);
 
-        await interaction.reply({
+        await interaction.editReply({
           content: `Feedback submitted! Click below to rate the next staff member.`,
           components: [row],
-          flags: MessageFlags.Ephemeral,
         });
       } else {
         // All feedback collected, close the thread
@@ -1502,7 +1504,7 @@ async function handleWarehouseSubType(interaction, subType, category) {
 
         const thread = interaction.channel;
 
-        await interaction.reply({ content: 'Thank you for your feedback! Closing ticket...', flags: MessageFlags.Ephemeral });
+        await interaction.editReply({ content: 'Thank you for your feedback! Closing ticket...' });
 
         if (pendingFeedback.dbPersisted) {
           try {
@@ -1548,9 +1550,11 @@ async function handleWarehouseSubType(interaction, subType, category) {
       const feedbackId = parts[2];
       const assigneeId = parts[3];
 
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
       const pendingFeedback = pendingTickets.get(`feedback_${feedbackId}`);
       if (!pendingFeedback) {
-        await interaction.reply({ content: 'Feedback session expired. Closing ticket...', flags: MessageFlags.Ephemeral });
+        await interaction.editReply({ content: 'Feedback session expired. Closing ticket...' });
 
         // Remove all members from thread and archive it
         const thread = interaction.channel;
@@ -1640,10 +1644,9 @@ async function handleWarehouseSubType(interaction, subType, category) {
 
         const row = new ActionRowBuilder().addComponents(nextButton);
 
-        await interaction.reply({
+        await interaction.editReply({
           content: `Feedback submitted! Click below to rate the next staff member.`,
           components: [row],
-          flags: MessageFlags.Ephemeral,
         });
       } else {
         // All feedback collected, close the thread
@@ -1651,7 +1654,7 @@ async function handleWarehouseSubType(interaction, subType, category) {
 
         const thread = interaction.channel;
 
-        await interaction.reply({ content: 'Thank you for your feedback! Closing ticket...', flags: MessageFlags.Ephemeral });
+        await interaction.editReply({ content: 'Thank you for your feedback! Closing ticket...' });
 
         // Update ticket status in database
         try {
