@@ -2116,7 +2116,7 @@ async function handleWarehouseSubType(interaction, subType, category) {
       priority: fields.priority?.toLowerCase() === 'urgent' ? 'urgent' : 'normal',
       item_id: fields.item_id ? parseInt(fields.item_id) : null,
       order_id: fields.order_id ? parseInt(fields.order_id) : null,
-      notes: fields.notes || null,
+      notes: buildStoredTicketNotes(fields),
       link: fields.link || null,
       created_by: user.id,
       created_by_name: user.displayName || user.username,
@@ -2159,6 +2159,9 @@ async function handleWarehouseSubType(interaction, subType, category) {
     const row = new ActionRowBuilder().addComponents(editButton, closeButton);
 
     await thread.send({ embeds: [embed], components: [row] });
+    if (modalId === 'modal_mulmed_wallpaper') {
+      await thread.send({ content: 'Silakan kirim foto letak pemasangan wallpaper di thread ini.' });
+    }
 
     await thread.members.add(user.id);
     for (const userId of assignedUserIds) {
@@ -2398,6 +2401,21 @@ function createTicketEmbed(modalId, fields, user) {
   if (fields.notes) embed.addFields({ name: 'Notes', value: fields.notes });
 
   return embed;
+}
+
+function buildStoredTicketNotes(fields) {
+  const noteSections = [];
+
+  if (fields.notes) noteSections.push(`Notes: ${fields.notes}`);
+  if (fields.brief) noteSections.push(`Brief: ${fields.brief}`);
+  if (fields.additional_output) noteSections.push(`Additional Output: ${fields.additional_output}`);
+  if (fields.additional) noteSections.push(`Additional: ${fields.additional}`);
+
+  if (noteSections.length === 0) {
+    return null;
+  }
+
+  return noteSections.join('\n\n').slice(0, 1000);
 }
 
 function getChannelForTicket(modalId) {

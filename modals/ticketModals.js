@@ -243,8 +243,9 @@ const modals = {
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
-      { id: 'link', label: 'Link', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements & additional output (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description & additional output requirements...' },
+      { id: 'link', label: 'Link', description: 'Provide reference link', required: true, placeholder: 'https://...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Describe additional output requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -266,7 +267,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements & additional info (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description & additional requirements...' },
+      { id: 'brief', label: 'Detailed Announcement Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Detailed announcement brief...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Describe additional output requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -287,8 +289,9 @@ const modals = {
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
-      { id: 'link', label: 'Link', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements & additional output (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description & additional output requirements...' },
+      { id: 'link', label: 'Visual Asset Link', description: 'Provide reference link (optional)', required: true, placeholder: 'https://...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Brief description...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Describe additional output requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -310,7 +313,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Your requirements & additional output specs (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Brief description, additional info, output specs, etc...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Brief description...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Describe additional output requirements (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Additional output requirements...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -333,7 +337,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Store design requirements, size & additional output', style: TextInputStyle.Paragraph, placeholder: 'Describe your store design, include size & additional output...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your store design requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Describe your store design...' },
+      { id: 'size', label: 'Size', description: 'Enter the store design size', required: true, placeholder: 'Example: 120 x 200 cm' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -402,7 +407,7 @@ const modals = {
       },
       { id: 'link', label: 'Link', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Describe your wallpaper requirements', style: TextInputStyle.Paragraph, placeholder: 'Describe your wallpaper request...' },
-      { id: 'size', label: 'Size', description: 'Specify the size', placeholder: 'e.g., 1920x1080, etc.' },
+      { id: 'size', label: 'Size', description: 'Bila tidak tahu, kosongkan.', required: false, placeholder: 'Kirim foto letak pemasangan wallpapernya di thread yang terbentuk' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -447,7 +452,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link Reference', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements, size & QTY', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including size and quantity...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Describe your request...' },
+      { id: 'size_qty', label: 'Size + QTY', description: 'Enter the size and quantity', required: true, placeholder: 'Example: A4, 500 pcs' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -469,7 +475,7 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link Reference', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements, size & QTY', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including size and quantity...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements & QTY', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including quantity...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -491,7 +497,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link Reference', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements, size & QTY', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including size and quantity...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Describe your request...' },
+      { id: 'size_qty', label: 'Size + QTY', description: 'Enter the size and quantity (optional)', required: false, placeholder: 'Example: A6, 100 pcs' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -513,7 +520,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link Reference', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements, size & QTY', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including size and quantity...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Describe your request...' },
+      { id: 'size_qty', label: 'Size + QTY', description: 'Enter the size and quantity (optional)', required: false, placeholder: 'Example: 5 x 5 cm, 100 pcs' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -535,7 +543,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link Reference', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements, size, QTY & additional output', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including size, quantity, and additional output...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Describe your request...' },
+      { id: 'size_qty', label: 'Size + QTY', description: 'Enter the size and quantity (optional)', required: false, placeholder: 'Example: 30 x 40 cm, 100 pcs' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -557,7 +566,8 @@ const modals = {
         ]
       },
       { id: 'link', label: 'Link Reference', description: 'Provide reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Describe your requirements, size & QTY', style: TextInputStyle.Paragraph, placeholder: 'Describe your request including size and quantity...' },
+      { id: 'brief', label: 'Brief', description: 'Describe your requirements', style: TextInputStyle.Paragraph, required: true, placeholder: 'Describe your request...' },
+      { id: 'size_qty', label: 'Size + QTY', description: 'Enter the size and quantity (optional)', required: false, placeholder: 'Example: 30 x 40 x 10 cm, 100 pcs' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -601,8 +611,9 @@ const modals = {
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
-      { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
-      { id: 'brief', label: 'Brief', description: 'Your requirements (Hero Link wajib), deadline & info', style: TextInputStyle.Paragraph, placeholder: 'Describe your request (include Hero Link), deadline: DD/MM/YYYY, size/placement, additional info...' },
+      { id: 'link', label: 'Link Hero Products', description: 'Reference link (optional)', required: true, placeholder: 'https://...' },
+      { id: 'brief', label: 'Brief', description: 'Mohon tulis brief design, dan referensi bila ada', style: TextInputStyle.Paragraph, placeholder: 'Describe your request, deadline (include Hero Link): DD/MM/YYYY, size/placement, additional info...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Tulis daftar output design yang kamu harapkan', style: TextInputStyle.Paragraph, required: false, placeholder: 'Example: Feed 1:1, story 9:16, banner website, etc...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -623,8 +634,9 @@ const modals = {
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
-      { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
+      { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: true, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Your requirements (Hero Link wajib), deadline & info', style: TextInputStyle.Paragraph, placeholder: 'Describe your request (include Hero Link), deadline: DD/MM/YYYY, size/placement, additional info...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Tulis daftar output design yang kamu harapkan', style: TextInputStyle.Paragraph, required: false, placeholder: 'Example: Feed 1:1, story 9:16, banner website, etc...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -645,8 +657,9 @@ const modals = {
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
-      { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
+      { id: 'link', label: 'Link Hero Products', description: 'Reference link', required: true, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Your requirements, deadline & info', style: TextInputStyle.Paragraph, placeholder: 'Describe your request, deadline: DD/MM/YYYY, size/placement, additional info...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Tulis daftar output design yang kamu harapkan', style: TextInputStyle.Paragraph, required: false, placeholder: 'Example: Feed 1:1, story 9:16, banner website, etc...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -667,8 +680,9 @@ const modals = {
           { label: 'Urgent', value: 'urgent', description: 'High priority' },
         ]
       },
-      { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
+      { id: 'link', label: 'Link Hero Products', description: 'Reference link', required: true, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Your requirements, deadline & info', style: TextInputStyle.Paragraph, placeholder: 'Describe your request, deadline: DD/MM/YYYY, size/placement, additional info...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Tulis daftar output design yang kamu harapkan', style: TextInputStyle.Paragraph, required: false, placeholder: 'Example: Feed 1:1, story 9:16, banner website, etc...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -692,6 +706,7 @@ const modals = {
       },
       { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Describe your requirements, deadline & info', style: TextInputStyle.Paragraph, placeholder: 'Describe your request, deadline: DD/MM/YYYY, size/scope, additional info...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Mohon tulis daftar output design yang kamu harapkan', style: TextInputStyle.Paragraph, required: false, placeholder: 'Example: Feed 1:1, story 9:16, banner website, etc...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
@@ -714,6 +729,7 @@ const modals = {
       },
       { id: 'link', label: 'Link Reference', description: 'Reference link (optional)', required: false, placeholder: 'https://...' },
       { id: 'brief', label: 'Brief', description: 'Describe your requirements, deadline & info (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Describe your request, deadline: DD/MM/YYYY, size/scope, additional info...' },
+      { id: 'additional_output', label: 'Additional Output', description: 'Mohon tulis daftar output design yang kamu harapkan', style: TextInputStyle.Paragraph, required: false, placeholder: 'Example: Feed 1:1, story 9:16, banner website, etc...' },
     ];
     const staffField = createStaffField(staffOptions, specialNote);
     if (staffField) fields.push(staffField);
