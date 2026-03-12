@@ -719,6 +719,27 @@ const modals = {
     if (staffField) fields.push(staffField);
     return createModal('modal_mulmed_project', 'Multimedia Ticket - Project', fields);
   },
+
+  foto_fisik: (staffOptions = []) => {
+    const fields = [
+      {
+        id: 'priority',
+        label: 'Priority',
+        description: 'Select the priority level (optional, defaults to Normal)',
+        type: 'select',
+        placeholder: 'Normal',
+        required: false,
+        options: [
+          { label: 'Normal', value: 'normal', description: 'Standard priority' },
+          { label: 'Urgent', value: 'urgent', description: 'High priority' },
+        ]
+      },
+      { id: 'item_id', label: 'Item ID', description: 'Enter the item ID', placeholder: 'Enter item ID' },
+    ];
+    const staffField = createStaffField(staffOptions);
+    if (staffField) fields.push(staffField);
+    return createModal('modal_mulmed_foto_fisik', 'Multimedia Ticket - Foto Fisik', fields);
+  },
 };
 
 const closeTicketModal = () =>

@@ -60,6 +60,8 @@ const TICKET_ROLES = {
   // Event Design
   mulmed_event: ['1336185533965144148'],
   mulmed_project: ['1336185533965144148'],
+  // Foto Fisik
+  mulmed_foto_fisik: [],
   // Warehouse tickets
   wh_cek_fisik: ['1204414986815012906'], // Will use ROLE_WH_OPERATION from env
   wh_pindah_fisik: ['1204414986815012906'], // Will use ROLE_WH_OPERATION from env
@@ -76,6 +78,7 @@ const TICKET_USERS = {
   mulmed_kolase: ['463834579799638056', '286790867329613824'],
   mulmed_singpost: ['463834579799638056', '915811508561272894'],
   mulmed_monthly_design: ['463834579799638056', '915811508561272894'],
+  mulmed_foto_fisik: ['286790867329613824', '851340340425129994'],
   // Warehouse tickets - direct user assignments
   wh_omega: [],
   wh_delta: [],
@@ -337,6 +340,56 @@ client.on('interactionCreate', async (interaction) => {
         content: 'Select the type of event design:',
         components: [row],
       });
+      return;
+    }
+
+    if (ticketType === 'foto_fisik') {
+      const modalFn = modals.foto_fisik;
+      const staffMembers = new Map();
+
+      const userIds = TICKET_USERS.mulmed_foto_fisik || [];
+      for (const userId of userIds) {
+        const member = await interaction.guild.members.fetch(userId).catch(() => null);
+        if (member && !member.user.bot) {
+          staffMembers.set(member.id, member);
+        }
+      }
+
+      const roleIds = TICKET_ROLES.mulmed_foto_fisik || [];
+      for (const roleId of roleIds) {
+        const role = interaction.guild.roles.cache.get(roleId);
+        if (role && role.members.size > 0) {
+          role.members.forEach((member) => {
+            if (!member.user.bot) staffMembers.set(member.id, member);
+          });
+        }
+      }
+
+      if (roleIds.length > 0) {
+        try {
+          await interaction.guild.members.fetch({ limit: 100 });
+          for (const roleId of roleIds) {
+            const role = interaction.guild.roles.cache.get(roleId);
+            if (role) {
+              role.members.forEach((member) => {
+                if (!member.user.bot) staffMembers.set(member.id, member);
+              });
+            }
+          }
+        } catch (e) {
+          console.log('Member fetch failed:', e.message);
+        }
+      }
+
+      const staffOptions = Array.from(staffMembers.values())
+        .slice(0, 25)
+        .map((member) => ({
+          label: member.displayName,
+          value: member.id,
+          description: member.user.tag,
+        }));
+
+      await interaction.showModal(modalFn(staffOptions));
       return;
     }
 
@@ -1005,6 +1058,7 @@ async function handleWarehouseSubType(interaction, subType, category) {
     else if (embedTitle.includes('Give Away') && embedTitle.includes('Multimedia')) ticketTypeKey = 'mulmed_give_away';
     else if (embedTitle.includes('Event')) ticketTypeKey = 'mulmed_event';
     else if (embedTitle.includes('Project')) ticketTypeKey = 'mulmed_project';
+    else if (embedTitle.includes('Foto Fisik')) ticketTypeKey = 'mulmed_foto_fisik';
 
     // Fetch staff members
     const staffMembers = new Map();
@@ -2038,6 +2092,8 @@ async function handleWarehouseSubType(interaction, subType, category) {
       // Event Design
       modal_mulmed_event: 'EVENT',
       modal_mulmed_project: 'PROJECT',
+      // Foto Fisik
+      modal_mulmed_foto_fisik: 'FOTO-FISIK',
     };
     const nameParts = [typeShort[modalId] || 'TICKET'];
     if (fields.item_id) nameParts.push(fields.item_id);
@@ -2309,6 +2365,8 @@ function createTicketEmbed(modalId, fields, user) {
     // Event Design
     modal_mulmed_event: 'Multimedia Ticket - Event',
     modal_mulmed_project: 'Multimedia Ticket - Project',
+    // Foto Fisik
+    modal_mulmed_foto_fisik: 'Multimedia Ticket - Foto Fisik',
   };
 
   const embed = new EmbedBuilder()
@@ -2388,6 +2446,8 @@ function getChannelForTicket(modalId) {
     // Event Design sub-types (with modal_ prefix)
     modal_mulmed_event: process.env.CHANNEL_EVENT,
     modal_mulmed_project: process.env.CHANNEL_EVENT,
+    // Foto Fisik
+    modal_mulmed_foto_fisik: process.env.CHANNEL_FOFIS,
     // Warehouse channels
     modal_wh_omega: process.env.CHANNEL_CEKFISIK,
     modal_wh_delta: process.env.CHANNEL_CEKFISIK,

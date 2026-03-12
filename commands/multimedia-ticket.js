@@ -11,6 +11,7 @@ const TICKET_TYPES = [
   { label: 'Offset Printing', value: 'offset_printing', description: 'Brosur, Kipas, Postcard, Sticker, Pasper Bag, Dus Kyou, Other' },
   { label: 'Promotional Design', value: 'promotional_design', description: 'Thematic Sale, Special Sale, Campaign, Give Away' },
   { label: 'Event Design', value: 'event_design', description: 'Event, Project' },
+  { label: 'Foto Fisik', value: 'foto_fisik', description: 'Request foto fisik' },
 ];
 
 module.exports = {
