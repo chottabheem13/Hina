@@ -1,6 +1,6 @@
 # WS Kor
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `WH Stock Management`
 - Ticket value: `ws_kor`
 - Channel env: `CHANNEL_WHSTOCKMANAGEMENT`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `WH Stock Management`
 3. Pilih `WS Kor`
 4. Isi `Item ID`

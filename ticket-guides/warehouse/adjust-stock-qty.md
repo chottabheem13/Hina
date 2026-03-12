@@ -1,6 +1,6 @@
 # Adjust Stock (QTY)
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `WH Stock Management`
 - Ticket value: `adjust_stock_qty`
 - Channel env: `CHANNEL_WHSTOCKMANAGEMENT`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `WH Stock Management`
 3. Pilih `Adjust Stock (QTY)`
 4. Isi `Item ID`

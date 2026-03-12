@@ -6,7 +6,7 @@ const {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('warehouse-ticket')
+    .setName('wh-ticket')
     .setDescription('Create a warehouse ticket'),
 
   async execute(interaction) {
@@ -16,24 +16,24 @@ module.exports = {
       .setPlaceholder('Select warehouse ticket category...')
       .addOptions([
         {
-          label: 'Cek Fisik',
+          label: 'Cek Fisik (O/SS/D/OP)',
           value: 'cek_fisik',
-          description: 'Physical stock checking',
+          description: 'Permintaan cek fisik untuk memastikan ketersediaan stock dan mengecek kondisi stock',
         },
         {
-          label: 'Pindah Fisik',
+          label: 'Pindah Fisik (WSR, Pickup, Retur & BDE)',
           value: 'pindah_fisik',
-          description: 'Physical stock movement',
+          description: 'Semua tugas yang bersifat permintaan pindah fisik',
         },
         {
-          label: 'WH PICK',
+          label: 'Pick Request (Dachi, GiveAway & Other)',
           value: 'wh_pick',
-          description: 'Warehouse picking',
+          description: 'Semua tugas yang bersifat permintaan keluar barang',
         },
         {
           label: 'WH Stock Management',
           value: 'wh_stock_mgmt',
-          description: 'Warehouse stock management',
+          description: 'Permintaan Koreksi Stock/Stock Management/Tracing',
         },
       ]);
 

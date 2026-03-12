@@ -77,6 +77,22 @@ function createStaffField(staffOptions, specialNote = null) {
   };
 }
 
+function createCustomStaffField(staffOptions, description) {
+  if (!staffOptions || staffOptions.length === 0) {
+    return null;
+  }
+  return {
+    id: 'assigned_to',
+    label: 'Assign To',
+    description,
+    type: 'select',
+    placeholder: 'Select staff...',
+    minValues: 1,
+    maxValues: Math.min(staffOptions.length, 10),
+    options: staffOptions,
+  };
+}
+
 // Helper to create store name select field
 function createStoreNameField(required = true) {
   return {
@@ -826,44 +842,44 @@ const createEditTicketModal = (threadId, staffOptions, currentAssigneeIds = []) 
 // Cek Fisik Sub-types (Omega, Delta, SS, OP)
 const wh_omega = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Paste Item ID' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Paste Order ID' },
+    { id: 'note', label: 'Note', description: 'Tulis catatan, serta nama user yang perlu difollow up', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan untuk Omega...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Ikmal, Irwan, Rexy (Baito))');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_omega_${tempId}`, 'Cek Fisik - Omega', fields);
 };
 
 const wh_delta = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Paste Item ID' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Paste Order ID' },
+    { id: 'note', label: 'Note', description: 'Tulis catatan, serta nama user yang perlu difollow up', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan untuk Delta...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Jonathan)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_delta_${tempId}`, 'Cek Fisik - Delta', fields);
 };
 
 const wh_ss = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Paste Item ID' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Paste Order ID' },
+    { id: 'note', label: 'Note', description: 'Tulis catatan, serta nama user yang perlu difollow up', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan untuk SS...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Ikmal, Irwan, Rexy (Baito))');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_ss_${tempId}`, 'Cek Fisik - SS', fields);
 };
 
 const wh_op = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Paste Item ID' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Paste Order ID' },
+    { id: 'note', label: 'Note', description: 'Tulis catatan, serta nama user yang perlu difollow up', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan untuk OP...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Jonathan)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_op_${tempId}`, 'Cek Fisik - OP', fields);
 };
@@ -872,10 +888,10 @@ const wh_op = (staffOptions = [], tempId = '') => {
 const wh_wsr = (staffOptions = [], tempId = '') => {
   const fields = [
     createStoreNameField(true),
-    { id: 'batch', label: 'Batch', description: 'Enter batch number (required)', placeholder: 'BATCH-XXX' },
+    { id: 'batch', label: 'Batch', description: 'Sheet name', placeholder: 'Copy Sheet Name WSR Toko-mu' },
     { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Agmo)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_wsr_${tempId}`, 'Warehouse Ticket - WSR', fields);
 };
@@ -883,30 +899,30 @@ const wh_wsr = (staffOptions = [], tempId = '') => {
 const wh_pickup_pelunasan = (staffOptions = [], tempId = '') => {
   const fields = [
     createStoreNameField(true),
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (required)', placeholder: 'ORD-XXX' },
-    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (required)', placeholder: 'Tulis Order ID' },
+    { id: 'note', label: 'Note', description: 'Tulis nama user dan sosmed untuk mempermudah follow up', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Alvito)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_pickup_pelunasan_${tempId}`, 'Warehouse Ticket - Pickup Pelunasan', fields);
 };
 
 const wh_return_monitor = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (required)', placeholder: 'ORD-XXX' },
-    { id: 'note', label: 'Note', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (required)', placeholder: 'Tulis Order ID' },
+    { id: 'note', label: 'Note', description: 'Mohon tulis apa yang harus WH lakukan ketika retur tiba', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Alvito)');
   if (staffField) fields.push(staffField);
-  return createModal(`modal_wh_return_monitor_${tempId}`, 'Warehouse Ticket - Return Monitor', fields);
+  return createModal(`modal_wh_return_monitor_${tempId}`, 'Warehouse Ticket - Retur Monitor', fields);
 };
 
 const wh_bde = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'batch', label: 'Batch', description: 'Enter batch number (required)', placeholder: 'BATCH-XXX' },
-    { id: 'note', label: 'Note', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'batch', label: 'Sheet Link', description: 'Mohon paste sheet link', placeholder: 'https://...' },
+    { id: 'note', label: 'Note', description: 'Mohon tulis bila ada intruksi khusus untuk Pindah fisik BDE', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Alvito & Agmo)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_bde_${tempId}`, 'Warehouse Ticket - BDE', fields);
 };
@@ -914,65 +930,64 @@ const wh_bde = (staffOptions = [], tempId = '') => {
 // WH Pick Sub-types
 const wh_dachi = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'notes', label: 'Notes', description: 'Additional notes (optional)', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Tulis Item ID disini, (boleh lebih dari 1)' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Tulis Order ID disini, kosongkan bila belum order' },
+    { id: 'notes', label: 'Notes', description: 'Mohon tulis keterangan tambahan bila ada', style: TextInputStyle.Paragraph, required: false, placeholder: 'Catatan tambahan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff specialist for WH Pick - Giveaway');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_dachi_${tempId}`, 'Warehouse Ticket - Dachi', fields);
 };
 
 const wh_give_away = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Tulis Item ID disini, (boleh lebih dari 1)' },
+    { id: 'notes', label: 'Notes', description: 'Mohon tulis keterangan tambahan bila ada', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Irwan & Ikmal)');
   if (staffField) fields.push(staffField);
-  return createModal(`modal_wh_give_away_${tempId}`, 'Warehouse Ticket - Give Away', fields);
+  return createModal(`modal_wh_give_away_${tempId}`, 'Warehouse Ticket - Giveaway', fields);
 };
 
 const wh_pick_other = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'Tulis Item ID disini, (boleh lebih dari 1)' },
+    { id: 'notes', label: 'Notes', description: 'Mohon tulis keterangan tambahan bila ada', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Irwan & Ikmal)');
   if (staffField) fields.push(staffField);
-  return createModal(`modal_wh_pick_other_${tempId}`, 'Warehouse Ticket - WH Pick Other', fields);
+  return createModal(`modal_wh_pick_other_${tempId}`, 'Warehouse Ticket - Other', fields);
 };
 
 // WH Stock Management Sub-types
 const wh_ws_kor = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (Can Enter more than 1)', placeholder: 'Tulis Item ID disini' },
+    { id: 'notes', label: 'Notes', description: 'Mohon tulis keterangan sedetail mungkin', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Alvito & Cindy)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_ws_kor_${tempId}`, 'Warehouse Ticket - WS Kor', fields);
 };
 
 const wh_adjust_stock_qty = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (Can be more than 1)', placeholder: 'Tulis Item ID disini' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Tulis Order ID disini' },
+    { id: 'notes', label: 'Notes', description: 'Mohon tulis keterangan sedetail mungkin', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Alvito & Cindy)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_adjust_stock_qty_${tempId}`, 'Warehouse Ticket - Adjust Stock (QTY)', fields);
 };
 
 const wh_adjust_stock_transfer = (staffOptions = [], tempId = '') => {
   const fields = [
-    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (required)', placeholder: 'ITEM-XXX' },
-    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'ORD-XXX' },
-    { id: 'notes', label: 'Notes', description: 'Notes / keterangan (required)', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
+    { id: 'item_id', label: 'Item ID', description: 'Enter Item ID (Can be more than 1)', placeholder: 'Tulis Item ID disini' },
+    { id: 'order_id', label: 'Order ID', description: 'Enter Order ID (optional)', required: false, placeholder: 'Tulis Order ID disini' },
+    { id: 'notes', label: 'Notes', description: 'Mohon tulis keterangan sedetail mungkin', style: TextInputStyle.Paragraph, placeholder: 'Catatan / keterangan...' },
   ];
-  const staffField = createStaffField(staffOptions);
+  const staffField = createCustomStaffField(staffOptions, 'Select staff to handle this ticket (Specialist: Alvito & Cindy)');
   if (staffField) fields.push(staffField);
   return createModal(`modal_wh_adjust_stock_transfer_${tempId}`, 'Warehouse Ticket - Adjust Stock (Transfer)', fields);
 };

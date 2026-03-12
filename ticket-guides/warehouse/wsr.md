@@ -1,6 +1,6 @@
 # WSR
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `Pindah Fisik`
 - Ticket value: `wsr`
 - Channel env: `CHANNEL_PINDAHFISIK`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `Pindah Fisik`
 3. Pilih `WSR`
 4. Pilih `Store Name`

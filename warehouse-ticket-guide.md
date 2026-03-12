@@ -7,7 +7,7 @@ Warehouse Ticket System adalah fitur untuk membuat tiket warehouse dengan 4 kate
 ## Cara Membuat Tiket
 
 Gunakan command berikut di Discord:
-- `/warehouse-ticket` - Membuat tiket warehouse
+- `/wh-ticket` - Membuat tiket warehouse
 
 Pilih **Kategori** dari dropdown, lalu **Sub-Type**, dan isi form yang tersedia.
 

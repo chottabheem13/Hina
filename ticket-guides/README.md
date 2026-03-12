@@ -58,4 +58,4 @@ Catatan:
 
 - Multimedia command aktif: `/mulmed-ticket`
 - Purchasing command aktif: `/purchasing-ticket`
-- Warehouse command aktif: `/warehouse-ticket`
+- Warehouse command aktif: `/wh-ticket`

@@ -1,6 +1,6 @@
 # Retur Monitor
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `Pindah Fisik`
 - Ticket value: `return_monitor`
 - Channel env: `CHANNEL_PINDAHFISIK`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `Pindah Fisik`
 3. Pilih `Retur Monitor`
 4. Isi `Order ID`

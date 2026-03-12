@@ -24,7 +24,7 @@ Gunakan slash command berikut di Discord:
 
 - `/purchasing-ticket`
 - `/mulmed-ticket`
-- `/warehouse-ticket`
+- `/wh-ticket`
 
 ---
 
@@ -46,7 +46,7 @@ Gunakan slash command berikut di Discord:
 6. Bot membuat thread di channel tujuan
 
 ### Warehouse
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih kategori
 3. Pilih sub-type
 4. Isi modal

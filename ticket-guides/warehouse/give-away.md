@@ -1,6 +1,6 @@
 # Give Away
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `WH Pick`
 - Ticket value: `give_away`
 - Channel env: `CHANNEL_WHPICK`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `WH Pick`
 3. Pilih `Give Away`
 4. Isi `Item ID`

@@ -1,6 +1,6 @@
 # WH Pick Other
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `WH Pick`
 - Ticket value: `wh_pick_other`
 - Channel env: `CHANNEL_WHPICK`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `WH Pick`
 3. Pilih `Other`
 4. Isi `Item ID`

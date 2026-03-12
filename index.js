@@ -305,7 +305,7 @@ client.on('interactionCreate', async (interaction) => {
         { label: 'Thematic Sale', value: 'thematic_sale', description: 'Thematic sale request' },
         { label: 'SP Sale', value: 'sp_sale', description: 'SP sale request' },
         { label: 'Campaign', value: 'campaign', description: 'Campaign request' },
-        { label: 'Give Away', value: 'give_away', description: 'Give away request' },
+        { label: 'Giveaway', value: 'give_away', description: 'Giveaway request' },
       ];
 
       const selectMenu = new StringSelectMenuBuilder()
@@ -815,26 +815,26 @@ client.on('interactionCreate', async (interaction) => {
     // Pindah Fisik
     else if (category === 'pindah_fisik') {
       subOptions = [
-        { label: 'WSR', value: 'wsr', description: 'Pindah Fisik - WSR' },
-        { label: 'Pickup Pelunasan', value: 'pickup_pelunasan', description: 'Pindah Fisik - Pickup Pelunasan' },
-        { label: 'Retur Monitor', value: 'return_monitor', description: 'Pindah Fisik - Retur Monitor' },
-        { label: 'BDE', value: 'bde', description: 'Pindah Fisik - BDE' },
+        { label: 'WSR', value: 'wsr', description: 'Pickup Stock Request dari Store ke WH' },
+        { label: 'Pickup Pelunasan', value: 'pickup_pelunasan', description: 'Pickup Order yang belum dilunasi di Toko sekaligus Pelunasan' },
+        { label: 'Retur Monitor', value: 'return_monitor', description: 'Bila ada retur dari user, mohon lapor kesini' },
+        { label: 'BDE', value: 'bde', description: 'Pindah Fisik untuk Conversion BDE to Ready Stock' },
       ];
     }
     // WH Pick
     else if (category === 'wh_pick') {
       subOptions = [
         { label: 'Dachi', value: 'dachi', description: 'WH Pick - Dachi' },
-        { label: 'Give Away', value: 'give_away', description: 'WH Pick - Give Away' },
-        { label: 'Other', value: 'wh_pick_other', description: 'WH Pick - Other' },
+        { label: 'Giveaway', value: 'give_away', description: 'WH Pick - Giveaway' },
+        { label: 'Other', value: 'pick_other', description: 'WH Pick - Other' },
       ];
     }
     // WH Stock Management
     else if (category === 'wh_stock_mgmt') {
       subOptions = [
-        { label: 'WS Kor', value: 'ws_kor', description: 'WH Stock Management - WS Kor' },
-        { label: 'Adjust Stock (QTY)', value: 'adjust_stock_qty', description: 'WH Stock Management - Adjust Stock (QTY)' },
-        { label: 'Adjust Stock (Transfer)', value: 'adjust_stock_transfer', description: 'WH Stock Management - Adjust Stock (Transfer)' },
+        { label: 'Koreksi WS (WS Kor)', value: 'ws_kor', description: 'Tracing & Penyesuaian stock yang qtynya tidak sesuai ketika masuk di Toko' },
+        { label: 'Adjust Stock (QTY)', value: 'adjust_stock_qty', description: 'Tracing & Penyesuaian qty stock yang ditemukan tidak sesuai jumlahnya' },
+        { label: 'Adjust Stock (Transfer)', value: 'adjust_stock_transfer', description: 'Tracing & Penyesuaian qty stock yang ditemukan tidak sesuai letak barangnya' },
       ];
     }
 
@@ -2287,7 +2287,7 @@ function createWarehouseTicketEmbed(modalId, fields, user) {
     modal_wh_return_monitor: 'Pindah Fisik - Return Monitor',
     modal_wh_bde: 'Pindah Fisik - BDE',
     modal_wh_dachi: 'WH PICK - Dachi',
-    modal_wh_give_away: 'WJ PICK - Give Away',
+    modal_wh_give_away: 'WH PICK - Giveaway',
     modal_wh_pick_other: 'WH Pick Other',
     modal_wh_ws_kor: 'WH Stock Management - WS Kor',
     modal_wh_adjust_stock_qty: 'WH Stock Management - Adjust Stock (QTY)',

@@ -1,6 +1,6 @@
 # OP
 
-- Command: `/warehouse-ticket`
+- Command: `/wh-ticket`
 - Kategori: `Cek Fisik`
 - Ticket value: `op`
 - Channel env: `CHANNEL_CEKFISIK`
@@ -13,7 +13,7 @@
 
 ## Cara Buat
 
-1. Jalankan `/warehouse-ticket`
+1. Jalankan `/wh-ticket`
 2. Pilih `Cek Fisik`
 3. Pilih `OP`
 4. Isi `Item ID`
