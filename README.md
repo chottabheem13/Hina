@@ -1,13 +1,19 @@
-# Hina - Discord Logbook Reminder Bot
+# Hina - Discord Shift Monitoring Bot
 
 Bot ini akan:
-- Kirim reminder setiap 30 menit mulai jam `18:00` (default WIB) ke user ID yang belum lapor.
-- User kirim status lewat pesan biasa di channel laporan.
-- Semua reminder dan laporan masuk ke log channel.
+- Kirim pengingat otomatis saat shift dimulai sesuai jadwal tetap lewat DM (private).
+- Mention petugas utama + backup (`Eric`) per shift.
+- Terima check-in lewat:
+  - ketik `start` di channel check-in, atau
+  - klik tombol **Start** dari bot.
+- Saat shift berakhir, bot kirim tombol **Selesai** (atau ketik `selesai`) untuk finalisasi.
+- Tampilkan status check-in real-time: `? Sudah` / `? Belum`.
+- Kirim reminder ulang setiap X menit untuk yang belum check-in (via DM).
+- (Opsional) simpan log ke Google Sheets dan kirim recap harian.
 
 ## 1) Setup
 
-1. Copy file environment:
+1. Copy env:
 ```powershell
 Copy-Item .env.example .env
 ```
@@ -17,35 +23,75 @@ Copy-Item .env.example .env
 npm install
 ```
 
-## 2) Invite Bot ke Server
+## 2) Konfigurasi Utama
 
-Pastikan bot punya permission:
-- `View Channels`
-- `Send Messages`
-- `Embed Links`
-- `Read Message History`
+- `SHIFT_USER_IDS` wajib berisi mapping:
+  - `Abi`
+  - `Cilla`
+  - `Sharon`
+  - `Eric`
+- `SHIFT_REMINDER_CHANNEL_ID` khusus reminder shift piket.
+- `LOGBOOK_REMINDER_CHANNEL_ID` khusus reminder logbook (opsional, harus beda channel).
+- `REMINDER_REPEAT_MINUTES` untuk interval reminder ulang.
+- `LATE_AFTER_MINUTES` untuk klasifikasi `On time` vs `Late`.
+- `FINISH_GRACE_MINUTES` untuk batas waktu klik tombol `Selesai` setelah shift berakhir.
+- `CHECKIN_CHANNEL_ID` channel khusus check-in `start`.
+- `TIMEZONE=Asia/Jakarta` supaya jadwal konsisten WIB.
 
-Jangan lupa aktifkan juga **Message Content Intent** di Discord Developer Portal untuk bot ini.
-## 3) Jalankan Bot
+## 3) Setup Google Sheets (Opsional)
+
+1. Buat Google Sheet baru, lalu copy `spreadsheetId` dari URL.
+2. Buat Service Account, aktifkan Google Sheets API.
+3. Share sheet ke email service account sebagai `Editor`.
+4. Isi variabel:
+   - `GSHEET_SPREADSHEET_ID`
+   - `GSHEET_TAB_NAME`
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `GOOGLE_PRIVATE_KEY`
+
+## 4) Jalankan Bot
 
 ```bash
 npm start
 ```
 
-Kalau sukses, console akan menampilkan login bot dan status scheduler.
+## Jadwal Shift (Hardcoded sesuai requirement)
 
-## Konfigurasi Penting
+- Shift 1 (09:00-12:00)
+  - Senin: Abi
+  - Selasa: Cilla
+  - Rabu: Sharon
+  - Kamis: Abi
+  - Jumat: Cilla
+  - Sabtu: Sharon
+  - Minggu: Libur
+- Shift 2 (12:00-15:00)
+  - Senin: Cilla
+  - Selasa: Sharon
+  - Rabu: Cilla
+  - Kamis: Cilla
+  - Jumat: Sharon
+  - Sabtu: Cilla
+  - Minggu: Libur
+- Shift 3 (16:00-19:00)
+  - Senin: Sharon
+  - Selasa: Abi
+  - Rabu: Abi
+  - Kamis: Sharon
+  - Jumat: Abi
+  - Sabtu: Abi
+  - Minggu: Libur
+- Backup harian: Eric (ikut dimonitor di setiap shift)
 
-- `REMINDER_CRON=0,30 18-23 * * *` artinya tiap 30 menit dari 18:00 sampai 23:30.
-- `TIMEZONE=Asia/Jakarta` supaya scheduler konsisten WIB.
-- `REMINDER_USER_IDS` bisa isi 2 user atau lebih, pisahkan dengan koma.
+## Command User (Teks)
 
-## Alur Pakai
+- `start` (hanya di channel check-in): check-in mulai shift aktif.
+- `selesai <link>` (hanya di channel check-in): finalisasi setelah shift berakhir dengan link bukti.
+- Tombol `Selesai`: akan membuka modal untuk input link bukti.
 
-1. Mulai jam 18:00, bot mention user yang belum lapor di `REMINDER_CHANNEL_ID` setiap 30 menit.
-2. User kirim chat biasa di `REPORT_CHANNEL_ID`. Contoh: `aku dah isi kak abi.`
-3. User yang sudah lapor valid tidak akan di-remind lagi di hari itu.
-4. Bot kirim log activity ke `LOG_CHANNEL_ID`.
+## Command Admin (Slash)
 
-Catatan:
-- Bot hanya catat pesan yang terdeteksi sebagai laporan logbook (contoh mengandung kata seperti `isi`, `udah`, `sudah`, `belum`, `logbook`).
+- `/tes-shift nomor:<1|2|3>`: trigger manual shift.
+- `/tes-reminder-logbook`: kirim reminder logbook manual.
+- `/status-shift`: lihat status shift aktif.
+- `/rekap-hari-ini`: lihat ringkasan hari ini.

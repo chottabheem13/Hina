@@ -1,58 +1,41 @@
-# Flow Guide - Hina Logbook Reminder Bot
+# Flow Guide - Hina Shift Monitoring Bot
 
 ## Tujuan
-Bot ini dipakai untuk:
-- Ngingetin user tertentu isi logbook setiap hari.
-- Nerima laporan via chat biasa.
-- Nyimpen jejak aktivitas di log channel.
+- Monitoring kedisiplinan piket berbasis shift.
+- Semua orang bisa lihat siapa sudah check-in dan siapa belum.
+- Reminder otomatis berjalan tanpa manual follow-up.
 
-## Aktor
-- Admin: set konfigurasi bot dan channel.
-- User target: user yang wajib lapor (berdasarkan `REMINDER_USER_IDS`).
-- Bot Hina: kirim reminder, validasi laporan, kirim log.
+## Channel
+- `SHIFT_REMINDER_CHANNEL_ID`: channel referensi shift (opsional/legacy config).
+- `LOGBOOK_REMINDER_CHANNEL_ID`: channel terpisah untuk reminder logbook (opsional).
+- `CHECKIN_CHANNEL_ID`: tempat user check-in dengan `start`.
+- `LOG_CHANNEL_ID`: jejak aktivitas bot (shift mulai, check-in, shift ditutup).
 
-## Channel yang dipakai
-- `REMINDER_CHANNEL_ID`: tempat bot mention user target yang belum lapor.
-- `REPORT_CHANNEL_ID`: tempat user target kirim laporan.
-- `LOG_CHANNEL_ID`: tempat bot kirim log reminder + log laporan masuk.
+## Alur Inti
+1. Saat jam shift mulai, bot kirim pesan via DM ke petugas:
+   - mention petugas utama hari itu,
+   - mention backup (`Eric`),
+   - tampilkan status awal `?`.
+2. User check-in dengan:
+   - ketik `start` di channel check-in, atau
+   - klik tombol **Start** di pesan bot.
+3. Setelah check-in, status Start berubah jadi `?` otomatis.
+4. Saat shift berakhir, bot kirim tombol **Selesai** (atau user ketik `selesai`) untuk finalisasi.
+5. Jika dalam `REMINDER_REPEAT_MINUTES` belum check-in:
+   - bot kirim reminder ulang via DM,
+   - mention yang masih `?`.
+6. Saat fase selesai ditutup:
+   - yang belum `start` ditandai `tidak hadir`,
+   - yang sudah `start` tapi belum `selesai` ditandai `tidak selesai`.
 
-## Flow Harian
-1. Mulai jam `18:00` sampai `23:30` (timezone: `Asia/Jakarta`), bot jalan otomatis tiap 30 menit sesuai `REMINDER_CRON`.
-2. Bot mention hanya user yang belum lapor hari itu ke channel reminder.
-3. User target kirim chat di channel laporan, contoh:
-   - `aku dah isi logbook`
-   - `aku belum isi logbook, nanti jam 9`
-4. Bot cek pesan:
-   - Kalau pengirim bukan user target: diabaikan.
-   - Kalau pesan tidak kebaca sebagai laporan logbook: bot balas template peringatan, tidak dicatat ke log.
-   - Kalau valid dan itu laporan pertama hari itu: bot balas konfirmasi (`laporan tercatat`), stop reminder untuk user tersebut, dan kirim log embed ke `LOG_CHANNEL_ID`.
-   - Kalau valid tapi user sudah lapor sebelumnya di hari yang sama: bot balas bahwa laporan hari ini sudah pernah tercatat.
+## Status
+- `?` = sudah check-in.
+- `?` = belum check-in.
+- `On time` = check-in sebelum/melewati batas `LATE_AFTER_MINUTES`?
+  - `<= LATE_AFTER_MINUTES`: `On time`
+  - `> LATE_AFTER_MINUTES`: `Late`
 
-## Rules Validasi Pesan
-- Bot hanya memproses pesan dari user dalam `REMINDER_USER_IDS`.
-- Bot menganggap pesan sebagai laporan jika ada kata kunci terkait logbook, seperti:
-  - `isi`, `logbook`, `log book`, `udah`, `sudah`, `belum`, `dah`
-- Klasifikasi status otomatis:
-  - Mengandung `udah isi`/`sudah isi`/`dah isi`/`done`/`beres`/`selesai` => `Sudah isi`
-  - Mengandung `belum`/`belom`/`ntar`/`nanti` => `Belum isi / akan isi nanti`
-  - Selain itu => `Laporan bebas`
-
-## Output Bot
-- Ke `REMINDER_CHANNEL_ID`:
-  - Pesan reminder tiap 30 menit + mention user target yang belum lapor.
-- Ke `REPORT_CHANNEL_ID`:
-  - Reply konfirmasi jika laporan valid.
-  - Reply arahan format jika laporan tidak valid.
-- Ke `LOG_CHANNEL_ID`:
-  - Embed `Reminder Terkirim`.
-  - Embed `Laporan Logbook Masuk` berisi user, status, channel, isi pesan.
-
-## Checklist Setup
-1. Isi `.env` sesuai server.
-2. Pastikan permission bot:
-   - `View Channels`
-   - `Send Messages`
-   - `Read Message History`
-   - `Embed Links`
-3. Aktifkan `Message Content Intent` di Discord Developer Portal.
-4. Jalankan bot: `npm start`.
+## Rekap
+- Command admin `/rekap-hari-ini` menampilkan:
+  - per shift: siapa on time/late/tidak hadir.
+- Jika Google Sheets aktif, bot juga simpan log permanen per check-in/absen.
