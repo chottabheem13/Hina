@@ -26,6 +26,7 @@ const CHECKIN_BUTTON_PREFIX = "shift-start:";
 const FINISH_BUTTON_PREFIX = "shift-finish:";
 const FINISH_MODAL_PREFIX = "shift-finish-modal:";
 const LOGBOOK_DONE_BUTTON_PREFIX = "logbook-done:";
+const FINISH_GIF_URL = "https://media1.tenor.com/m/uCHykOR2BTwAAAAd/girls-band-cry-hina.gif";
 
 const WEEKDAY_ID_LABEL = {
   monday: "Senin",
@@ -750,7 +751,10 @@ async function registerFinish({ userId, userTag, source, proofLink, reply }) {
     { name: "Link Bukti", value: proofLink },
     { name: "Sumber", value: source, inline: true },
   ]);
-  await reply(`✅ Selesai ${session.shiftLabel} tercatat dengan link bukti.`);
+  await reply({
+    content: `✅ Selesai ${session.shiftLabel} tercatat dengan link bukti.`,
+    files: [FINISH_GIF_URL],
+  });
 
   const pendingFinishes = getPendingFinishes(session);
   if (pendingFinishes.length === 0) {
