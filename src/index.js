@@ -254,9 +254,62 @@ function updateLogbookWeeklyStats(userId, username, submitted = true) {
   }
 }
 
-function getPendingLogbookUserIds() {
+async function hasUserSubmittedLogbookToday(userId) {
+  // Check in-memory first
+  if (logbookReportedToday.has(userId)) {
+    return true;
+  }
+
+  // Check Google Sheets logbook_history
+  if (sheets.isSheetsConfigured()) {
+    try {
+      const today = todayDateString();
+      const history = await sheets.getLogbookHistory(today, today);
+      const userHistory = history.filter(h => h.userId === userId);
+      if (userHistory.length > 0) {
+        // User sudah isi, tambahkan ke memory
+        logbookReportedToday.add(userId);
+        return true;
+      }
+    } catch (error) {
+      console.error("Gagal cek logbook history:", error.message);
+    }
+  }
+
+  return false;
+}
+
+async function getPendingLogbookUserIds() {
   syncLogbookDailyState();
-  return config.logbookUserIds.filter((userId) => !logbookReportedToday.has(userId));
+  const pending = [];
+
+  for (const userId of config.logbookUserIds) {
+    // Skip jika sudah di memory
+    if (logbookReportedToday.has(userId)) {
+      continue;
+    }
+
+    // Cek di Google Sheets
+    if (sheets.isSheetsConfigured()) {
+      try {
+        const today = todayDateString();
+        const history = await sheets.getLogbookHistory(today, today);
+        const userHistory = history.filter(h => h.userId === userId);
+        if (userHistory.length > 0) {
+          // User sudah isi, tambahkan ke memory
+          logbookReportedToday.add(userId);
+          continue;
+        }
+      } catch (error) {
+        console.error("Gagal cek logbook history:", error.message);
+      }
+    }
+
+    // User belum isi
+    pending.push(userId);
+  }
+
+  return pending;
 }
 
 function createLogbookDoneButtonRow(dayKey, disabled = false) {
@@ -440,7 +493,9 @@ async function registerLogbookDoneByButton({ userId, userTag, buttonDayKey, repl
     return;
   }
 
-  if (logbookReportedToday.has(userId)) {
+  // Cek apakah user sudah isi logbook hari ini (dari memory atau sheets)
+  const alreadySubmitted = await hasUserSubmittedLogbookToday(userId);
+  if (alreadySubmitted) {
     await reply("Status logbook kamu hari ini sudah tercatat.");
     return;
   }
@@ -1042,7 +1097,10 @@ async function handleLogbookReportMessage(message) {
   }
 
   syncLogbookDailyState();
-  if (logbookReportedToday.has(message.author.id)) {
+
+  // Cek apakah user sudah isi logbook hari ini (dari memory atau sheets)
+  const alreadySubmitted = await hasUserSubmittedLogbookToday(message.author.id);
+  if (alreadySubmitted) {
     return;
   }
 
@@ -1328,7 +1386,7 @@ async function handleSlashCommand(interaction) {
       return;
     }
 
-    const pendingUserIds = getPendingLogbookUserIds();
+    const pendingUserIds = await getPendingLogbookUserIds();
     if (pendingUserIds.length === 0) {
       await interaction.reply({ content: `Semua target logbook sudah lapor untuk ${todayDateString()}.`, ephemeral: true });
       return;
@@ -1511,8 +1569,9 @@ async function registerSchedules() {
             return;
           }
 
-          const pendingUserIds = getPendingLogbookUserIds();
+          const pendingUserIds = await getPendingLogbookUserIds();
           if (pendingUserIds.length === 0) {
+            console.log("Semua user sudah isi logbook hari ini, skip reminder");
             return;
           }
 
