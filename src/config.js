@@ -59,12 +59,15 @@ if (logbookReminderChannelId && logbookReminderChannelId === shiftReminderChanne
   throw new Error("LOGBOOK_REMINDER_CHANNEL_ID harus berbeda dari SHIFT_REMINDER_CHANNEL_ID.");
 }
 
+const taskNotificationChannelId = (process.env.TASK_NOTIFICATION_CHANNEL_ID || "").trim();
+
 const config = {
   token: requireEnv("DISCORD_TOKEN"),
   clientId: requireEnv("CLIENT_ID"),
   guildId: requireEnv("GUILD_ID"),
   shiftReminderChannelId,
   logbookReminderChannelId,
+  taskNotificationChannelId,
   checkinChannelId: (process.env.CHECKIN_CHANNEL_ID || requireEnv("REPORT_CHANNEL_ID")).trim(),
   logbookReportChannelId: (process.env.LOGBOOK_REPORT_CHANNEL_ID || process.env.REPORT_CHANNEL_ID || "").trim(),
   logChannelId: requireEnv("LOG_CHANNEL_ID"),
@@ -77,6 +80,9 @@ const config = {
   finishGraceMinutes: parsePositiveInt(process.env.FINISH_GRACE_MINUTES, 30),
   spreadsheetId: (process.env.GSHEET_SPREADSHEET_ID || "").trim(),
   spreadsheetTabName: (process.env.GSHEET_TAB_NAME || "shift_checkins").trim(),
+  spreadsheetTaskTabName: (process.env.GSHEET_TASK_TAB_NAME || "task_log").trim(),
+  spreadsheetWeeklyRecapTabName: (process.env.GSHEET_WEEKLY_RECAP_TAB_NAME || "weekly_logbook_recap").trim(),
+  spreadsheetLogbookHistoryTabName: (process.env.GSHEET_LOGBOOK_HISTORY_TAB_NAME || "logbook_history").trim(),
   googleServiceAccountEmail: (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "").trim(),
   googlePrivateKey: (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim(),
   timezone: (process.env.TIMEZONE || "Asia/Jakarta").trim(),

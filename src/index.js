@@ -16,10 +16,14 @@ const {
 const cron = require("node-cron");
 const config = require("./config");
 const sheets = require("./sheets");
+const taskHandler = require("./taskHandler");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
+
+// Expose client to taskHandler
+global.client = client;
 
 const LOGIN_RETRY_MS = 15000;
 const CHECKIN_BUTTON_PREFIX = "shift-start:";
@@ -92,7 +96,9 @@ const SHIFT_DEFINITIONS = [
 const activeSessions = new Map();
 const sessionHistoryByDay = new Map();
 const logbookReportedToday = new Set();
+const logbookWeeklyStats = new Map(); // Track stats per user per week
 let activeLogbookDayKey = "";
+let activeLogbookWeekKey = "";
 
 function nowInTimezone() {
   return new Date();
@@ -174,6 +180,77 @@ function syncLogbookDailyState() {
   if (dayKey !== activeLogbookDayKey) {
     activeLogbookDayKey = dayKey;
     logbookReportedToday.clear();
+  }
+}
+
+function getWeekRange(date = nowInTimezone()) {
+  // Get Monday of current week
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday
+  const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to Monday
+  const monday = new Date(date);
+  monday.setDate(diff);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(diff + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  return {
+    weekStart: new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: config.timezone,
+    }).format(monday),
+    weekEnd: new Intl.DateTimeFormat("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: config.timezone,
+    }).format(sunday),
+    weekNumber: getWeekNumber(monday),
+    monday,
+    sunday,
+  };
+}
+
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
+function syncLogbookWeeklyState() {
+  const weekRange = getWeekRange();
+  const weekKey = `${weekRange.weekStart}_${weekRange.weekEnd}`;
+
+  if (weekKey !== activeLogbookWeekKey) {
+    activeLogbookWeekKey = weekKey;
+    logbookWeeklyStats.clear();
+  }
+
+  return weekRange;
+}
+
+function updateLogbookWeeklyStats(userId, username, submitted = true) {
+  syncLogbookWeeklyState();
+
+  if (!logbookWeeklyStats.has(userId)) {
+    logbookWeeklyStats.set(userId, {
+      userId,
+      username,
+      submittedCount: 0,
+      missedCount: 0,
+    });
+  }
+
+  const stats = logbookWeeklyStats.get(userId);
+  if (submitted) {
+    stats.submittedCount++;
+  } else {
+    stats.missedCount++;
   }
 }
 
@@ -369,6 +446,20 @@ async function registerLogbookDoneByButton({ userId, userTag, buttonDayKey, repl
   }
 
   logbookReportedToday.add(userId);
+  updateLogbookWeeklyStats(userId, userTag, true);
+
+  // Save to Google Sheets - Logbook History
+  const weekRange = syncLogbookWeeklyState();
+  await sheets.appendLogbookHistory({
+    timestampIso: new Date().toISOString(),
+    dateLabel: todayDateString(),
+    userId,
+    username: userTag,
+    source: "button:aku-udah-isi",
+    weekKey: weekRange.weekStart,
+  }).catch((err) => {
+    console.error("Gagal save logbook history ke sheets:", err.message);
+  });
 
   const reportChannel = await client.channels.fetch(config.logbookReportChannelId);
   if (!reportChannel || !reportChannel.isTextBased()) {
@@ -798,6 +889,70 @@ function buildInMemoryRecap(dayKey) {
   return lines.join("\n");
 }
 
+async function generateWeeklyLogbookRecap(weekRange) {
+  const allUserIds = config.logbookUserIds;
+  const recapData = [];
+
+  // Get data from Google Sheets logbook_history
+  const historyData = await sheets.getLogbookHistory(weekRange.weekStart, weekRange.weekEnd);
+
+  for (const userId of allUserIds) {
+    // Count submissions from history for this user in this week
+    const userHistory = historyData.filter(h => h.userId === userId);
+    const submittedCount = userHistory.length;
+
+    // Calculate missed count (days in week - submitted)
+    // Assuming 7 days per week
+    const missedCount = Math.max(0, 7 - submittedCount);
+
+    // Fetch username
+    let username = "-";
+    try {
+      const user = await client.users.fetch(userId);
+      username = user.username;
+    } catch (error) {
+      username = `User_${userId}`;
+    }
+
+    const complianceRate = submittedCount > 0 ? Math.round((submittedCount / 7) * 100) : 0;
+
+    recapData.push({
+      weekStart: weekRange.weekStart,
+      weekEnd: weekRange.weekEnd,
+      weekNumber: weekRange.weekNumber,
+      userId: userId,
+      username: username,
+      submittedCount: submittedCount,
+      missedCount: missedCount,
+      complianceRate: `${complianceRate}%`,
+    });
+  }
+
+  return recapData;
+}
+
+async function saveWeeklyRecapToSheets(recapData) {
+  if (!sheets.isSheetsConfigured()) {
+    return;
+  }
+
+  try {
+    for (const data of recapData) {
+      await sheets.saveWeeklyLogbookRecap(data);
+    }
+    console.log(`Weekly recap saved to Google Sheets for ${recapData[0]?.weekStart}`);
+  } catch (error) {
+    console.error("Gagal save weekly recap ke Google Sheets:", error);
+  }
+}
+
+async function generateAndSaveWeeklyRecap() {
+  const weekRange = getWeekRange();
+  const recapData = await generateWeeklyLogbookRecap(weekRange);
+  await saveWeeklyRecapToSheets(recapData);
+  return { weekRange, recapData };
+}
+
 async function buildSheetRecap(dayKey) {
   if (!sheets.isSheetsConfigured()) {
     return null;
@@ -892,6 +1047,21 @@ async function handleLogbookReportMessage(message) {
   }
 
   logbookReportedToday.add(message.author.id);
+  updateLogbookWeeklyStats(message.author.id, message.author.tag, true);
+
+  // Save to Google Sheets - Logbook History
+  const weekRange = syncLogbookWeeklyState();
+  await sheets.appendLogbookHistory({
+    timestampIso: new Date().toISOString(),
+    dateLabel: todayDateString(),
+    userId: message.author.id,
+    username: message.author.tag,
+    source: "text:message",
+    weekKey: weekRange.weekStart,
+  }).catch((err) => {
+    console.error("Gagal save logbook history ke sheets:", err.message);
+  });
+
   await sendLog("📝 Laporan Logbook Masuk", [
     { name: "User", value: `${message.author.tag} (${message.author.id})` },
     { name: "Tanggal", value: todayDateString(), inline: true },
@@ -918,6 +1088,52 @@ function buildAdminSlashCommands() {
     new SlashCommandBuilder().setName("tes-reminder-logbook").setDescription("Kirim reminder logbook manual"),
     new SlashCommandBuilder().setName("status-shift").setDescription("Lihat status shift aktif"),
     new SlashCommandBuilder().setName("rekap-hari-ini").setDescription("Lihat rekap shift hari ini"),
+    new SlashCommandBuilder()
+      .setName("recap-mingguan")
+      .setDescription("Lihat recap logbook mingguan (Admin only)")
+      .addStringOption((option) =>
+        option
+          .setName("minggu")
+          .setDescription("Pilih minggu (default: minggu ini)")
+          .addChoices({ name: "Minggu Ini", value: "this" }, { name: "Minggu Lalu", value: "last" })
+      )
+      .addBooleanOption((option) =>
+        option.setName("simpan").setDescription("Simpan ke Google Sheets").setRequired(false)
+      ),
+    new SlashCommandBuilder()
+      .setName("task")
+      .setDescription("Manage task reminder")
+      .addSubcommand((sub) =>
+        sub
+          .setName("assign")
+          .setDescription("Assign task ke member (admin only)")
+          .addUserOption((option) => option.setName("member").setDescription("Member yang di-assign").setRequired(true))
+          .addStringOption((option) => option.setName("deskripsi").setDescription("Deskripsi task").setRequired(true))
+          .addStringOption((option) => option.setName("deadline").setDescription("Deadline (DD/MM HH:MM)").setRequired(true))
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("list")
+          .setDescription("Lihat semua task aktif")
+          .addStringOption((option) =>
+            option
+              .setName("member")
+              .setDescription("Lihat task member tertentu (admin only)")
+              .setRequired(false)
+          )
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("done")
+          .setDescription("Mark task sebagai selesai")
+          .addStringOption((option) => option.setName("task_id").setDescription("ID task (contoh: T001)").setRequired(true))
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("cancel")
+          .setDescription("Batalkan task (admin only)")
+          .addStringOption((option) => option.setName("task_id").setDescription("ID task (contoh: T001)").setRequired(true))
+      ),
   ].map((cmd) => cmd.toJSON());
 }
 
@@ -928,8 +1144,155 @@ async function registerSlashCommands() {
 }
 
 async function handleSlashCommand(interaction) {
+  if (interaction.commandName === "task") {
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "assign") {
+      // Admin only
+      if (!taskHandler.isAdminUser(interaction.user.id)) {
+        await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+        return;
+      }
+
+      const targetUser = interaction.options.getUser("member", true);
+      const description = interaction.options.getString("deskripsi", true);
+      const deadlineStr = interaction.options.getString("deadline", true);
+
+      await taskHandler.assignTask({
+        assignedBy: interaction.user.id,
+        assignedByName: interaction.user.username,
+        targetUser,
+        description,
+        deadlineStr,
+        reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+      });
+      return;
+    }
+
+    if (subcommand === "list") {
+      const targetMember = interaction.options.getUser("member");
+
+      // Jika ada parameter member, hanya admin yang bisa lihat
+      if (targetMember && !taskHandler.isAdminUser(interaction.user.id)) {
+        await interaction.reply({ content: "⛔ Hanya admin yang bisa melihat task member lain.", ephemeral: true });
+        return;
+      }
+
+      if (targetMember) {
+        // Admin melihat task member tertentu
+        const allTasks = await sheets.getAllTasks();
+        const memberTasks = allTasks.filter((t) => t.discordId === targetMember.id && t.status !== "cancelled");
+
+        if (memberTasks.length === 0) {
+          await interaction.reply({ content: `ℹ️ ${targetMember.username} tidak memiliki task aktif.`, ephemeral: true });
+          return;
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor(0x9b59b6)
+          .setTitle(`📋 Task ${targetMember.username}`)
+          .setTimestamp(new Date());
+
+        const taskLines = memberTasks.map((task) => {
+          const statusEmoji = task.status === "done" ? "✅" : "⏳";
+          return `${statusEmoji} **${task.taskId}**: ${task.taskDesc.substring(0, 50)}${task.taskDesc.length > 50 ? "..." : ""}
+            - Deadline: ${task.deadline}`;
+        });
+
+        embed.setDescription(taskLines.join("\n\n"));
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+      } else {
+        // User melihat task sendiri, admin melihat semua
+        await taskHandler.listTasks({
+          userId: interaction.user.id,
+          reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+        });
+      }
+      return;
+    }
+
+    if (subcommand === "done") {
+      const taskId = interaction.options.getString("task_id", true);
+
+      await taskHandler.markTaskDone({
+        userId: interaction.user.id,
+        taskId,
+        reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+      });
+      return;
+    }
+
+    if (subcommand === "cancel") {
+      // Admin only
+      if (!taskHandler.isAdminUser(interaction.user.id)) {
+        await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+        return;
+      }
+
+      const taskId = interaction.options.getString("task_id", true);
+
+      await taskHandler.cancelTask({
+        taskId,
+        cancelledBy: interaction.user.username,
+        reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+      });
+      return;
+    }
+
+    // Jika sampai sini, berarti bukan subcommand task yang valid
+    await interaction.reply({ content: "❌ Subcommand task tidak valid.", ephemeral: true });
+    return;
+  }
+
+  // Admin-only commands below
   if (!isAdminUser(interaction.user.id)) {
     await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+    return;
+  }
+
+  if (interaction.commandName === "recap-mingguan") {
+    const weekOption = interaction.options.getString("minggu") || "this";
+    const saveToSheets = interaction.options.getBoolean("simpan") || false;
+
+    const now = nowInTimezone();
+    let weekRange = getWeekRange(now);
+
+    if (weekOption === "last") {
+      // Get last week
+      const lastWeekDate = new Date(now);
+      lastWeekDate.setDate(now.getDate() - 7);
+      weekRange = getWeekRange(lastWeekDate);
+    }
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const recapData = await generateWeeklyLogbookRecap(weekRange);
+
+    // Build embed for recap
+    const embed = new EmbedBuilder()
+      .setColor(0x3498db)
+      .setTitle(`📊 Recap Logbook Mingguan`)
+      .setDescription(`Minggu: ${weekRange.weekStart} s/d ${weekRange.weekEnd}`)
+      .setTimestamp(new Date());
+
+    const recapLines = recapData.map((data) => {
+      const emoji =
+        Number.parseInt(data.complianceRate) >= 80
+          ? "✅"
+          : Number.parseInt(data.complianceRate) >= 50
+            ? "⚠️"
+            : "❌";
+      return `${emoji} **${data.username}**: ${data.submittedCount}x isi, ${data.missedCount}x terlewat (${data.complianceRate})`;
+    });
+
+    embed.setDescription(recapLines.join("\n"));
+
+    if (saveToSheets) {
+      await saveWeeklyRecapToSheets(recapData);
+      embed.addFields({ name: "💾 Status", value: "Data sudah disimpan ke Google Sheets", inline: false });
+    }
+
+    await interaction.editReply({ embeds: [embed] });
     return;
   }
 
@@ -1010,6 +1373,110 @@ async function handleSlashCommand(interaction) {
     }
     await interaction.reply({ content: lines.join("\n"), ephemeral: true });
   }
+
+  if (interaction.commandName === "task") {
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "assign") {
+      // Admin only
+      if (!taskHandler.isAdminUser(interaction.user.id)) {
+        await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+        return;
+      }
+
+      const targetUser = interaction.options.getUser("member", true);
+      const description = interaction.options.getString("deskripsi", true);
+      const deadlineStr = interaction.options.getString("deadline", true);
+
+      await taskHandler.assignTask({
+        assignedBy: interaction.user.id,
+        assignedByName: interaction.user.username,
+        targetUser,
+        description,
+        deadlineStr,
+        reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+      });
+      return;
+    }
+
+    if (subcommand === "list") {
+      const targetMember = interaction.options.getUser("member");
+
+      // Jika ada parameter member, hanya admin yang bisa lihat
+      if (targetMember && !taskHandler.isAdminUser(interaction.user.id)) {
+        await interaction.reply({ content: "⛔ Hanya admin yang bisa melihat task member lain.", ephemeral: true });
+        return;
+      }
+
+      if (targetMember) {
+        // Admin melihat task member tertentu
+        const allTasks = await sheets.getAllTasks();
+        const memberTasks = allTasks.filter((t) => t.discordId === targetMember.id && t.status !== "cancelled");
+
+        if (memberTasks.length === 0) {
+          await interaction.reply({ content: `ℹ️ ${targetMember.username} tidak memiliki task aktif.`, ephemeral: true });
+          return;
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor(0x9b59b6)
+          .setTitle(`📋 Task ${targetMember.username}`)
+          .setTimestamp(new Date());
+
+        const taskLines = memberTasks.map((task) => {
+          const statusEmoji = task.status === "done" ? "✅" : "⏳";
+          return `${statusEmoji} **${task.taskId}**: ${task.taskDesc.substring(0, 50)}${task.taskDesc.length > 50 ? "..." : ""}
+            - Deadline: ${task.deadline}`;
+        });
+
+        embed.setDescription(taskLines.join("\n\n"));
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+      } else {
+        // User melihat task sendiri, admin melihat semua
+        await taskHandler.listTasks({
+          userId: interaction.user.id,
+          reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+        });
+      }
+      return;
+    }
+
+    if (subcommand === "done") {
+      const taskId = interaction.options.getString("task_id", true);
+
+      await taskHandler.markTaskDone({
+        userId: interaction.user.id,
+        taskId,
+        reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+      });
+      return;
+    }
+
+    if (subcommand === "cancel") {
+      // Admin only
+      if (!taskHandler.isAdminUser(interaction.user.id)) {
+        await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+        return;
+      }
+
+      const taskId = interaction.options.getString("task_id", true);
+
+      await taskHandler.cancelTask({
+        taskId,
+        cancelledBy: interaction.user.username,
+        reply: (payload) => interaction.reply(typeof payload === "string" ? { content: payload, ephemeral: true } : { ...payload, ephemeral: true }),
+      });
+      return;
+    }
+
+    // Unknown subcommand
+    await interaction.reply({ content: "❌ Subcommand task tidak valid.", ephemeral: true });
+    return;
+  }
+
+  // Command tidak dikenali
+  await interaction.reply({ content: "❌ Command tidak dikenali.", ephemeral: true });
+  return;
 }
 
 async function registerSchedules() {
@@ -1061,15 +1528,40 @@ async function registerSchedules() {
   } else {
     console.log("Scheduler logbook nonaktif (env logbook belum lengkap).");
   }
+
+  // Auto-save weekly recap every Monday at 00:05
+  cron.schedule(
+    "5 0 * * 1",
+    async () => {
+      try {
+        console.log("Menjalinkan auto-save weekly logbook recap...");
+        await generateAndSaveWeeklyRecap();
+        // Reset weekly stats setelah save
+        logbookWeeklyStats.clear();
+      } catch (error) {
+        console.error("Gagal auto-save weekly recap:", error);
+      }
+    },
+    { timezone: config.timezone }
+  );
+
+  console.log("Scheduler aktif untuk weekly recap: Setiap Senin 00:05");
+
+  // Start task reminder scheduler (every 30 minutes)
+  taskHandler.startTaskReminderScheduler();
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot login sebagai ${readyClient.user.tag}`);
   syncLogbookDailyState();
+  syncLogbookWeeklyState();
 
   if (sheets.isSheetsConfigured()) {
     try {
       await sheets.ensureHeaderRow();
+      await sheets.ensureTaskLogHeaderRow();
+      await sheets.ensureWeeklyRecapHeaderRow();
+      await sheets.ensureLogbookHistoryHeaderRow();
       console.log("Google Sheets aktif.");
     } catch (error) {
       console.error("Gagal inisialisasi Google Sheets:", error);
@@ -1088,8 +1580,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleSlashCommand(interaction);
     } catch (error) {
       console.error("Gagal proses slash command:", error);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: "❌ Terjadi error saat menjalankan command.", ephemeral: true }).catch(() => {});
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: "❌ Terjadi error saat menjalankan command.", ephemeral: true });
+        }
+      } catch (replyError) {
+        // Ignore jika reply gagal (interaction sudah di-acknowledge)
+        console.log("Tidak bisa reply ke interaction:", replyError.message);
       }
     }
     return;
@@ -1099,15 +1596,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const isLogbookDoneButton = interaction.customId.startsWith(LOGBOOK_DONE_BUTTON_PREFIX);
     if (isLogbookDoneButton) {
       const buttonDayKey = interaction.customId.slice(LOGBOOK_DONE_BUTTON_PREFIX.length);
-      await interaction.deferReply({ ephemeral: true });
-      await registerLogbookDoneByButton({
-        userId: interaction.user.id,
-        userTag: interaction.user.tag,
-        buttonDayKey,
-        reply: async (text) => {
-          await interaction.editReply(text);
-        },
-      });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+      } catch (error) {
+        if (error.code === 10062 || error.code === 40060) {
+          console.log("Button interaction sudah expired/acknowledged, skip");
+          return;
+        }
+        throw error;
+      }
+      try {
+        await registerLogbookDoneByButton({
+          userId: interaction.user.id,
+          userTag: interaction.user.tag,
+          buttonDayKey,
+          reply: async (text) => {
+            try {
+              await interaction.editReply(text);
+            } catch (e) {
+              console.log("Gagal edit reply:", e.message);
+            }
+          },
+        });
+      } catch (error) {
+        console.error("Error di registerLogbookDoneByButton:", error.message);
+      }
       return;
     }
 
@@ -1118,15 +1631,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (isStartButton) {
-      await interaction.deferReply({ ephemeral: true });
-      await registerCheckin({
-        userId: interaction.user.id,
-        userTag: interaction.user.tag,
-        source: "button:start",
-        reply: async (text) => {
-          await interaction.editReply(text);
-        },
-      });
+      try {
+        await interaction.deferReply({ ephemeral: true });
+      } catch (error) {
+        if (error.code === 10062 || error.code === 40060) {
+          console.log("Button interaction sudah expired/acknowledged, skip");
+          return;
+        }
+        throw error;
+      }
+      try {
+        await registerCheckin({
+          userId: interaction.user.id,
+          userTag: interaction.user.tag,
+          source: "button:start",
+          reply: async (text) => {
+            try {
+              await interaction.editReply(text);
+            } catch (e) {
+              console.log("Gagal edit reply:", e.message);
+            }
+          },
+        });
+      } catch (error) {
+        console.error("Error di registerCheckin:", error.message);
+      }
       return;
     }
 
@@ -1142,7 +1671,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       .setStyle(TextInputStyle.Short);
     const row = new ActionRowBuilder().addComponents(linkInput);
     modal.addComponents(row);
-    await interaction.showModal(modal);
+    try {
+      await interaction.showModal(modal);
+    } catch (error) {
+      if (error.code === 10062 || error.code === 40060) {
+        console.log("Interaction sudah expired/acknowledged, skip showModal");
+      } else {
+        console.error("Gagal show modal:", error.message);
+      }
+    }
     return;
   }
 
@@ -1155,16 +1692,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   const proofLink = interaction.fields.getTextInputValue("proof_link").trim();
-  await interaction.deferReply({ ephemeral: true });
-  await registerFinish({
-    userId: interaction.user.id,
-    userTag: interaction.user.tag,
-    source: "modal:selesai",
-    proofLink,
-    reply: async (text) => {
-      await interaction.editReply(text);
-    },
-  });
+  try {
+    await interaction.deferReply({ ephemeral: true });
+  } catch (error) {
+    if (error.code === 10062 || error.code === 40060) {
+      console.log("Modal interaction sudah expired/acknowledged, skip");
+      return;
+    }
+    throw error;
+  }
+  try {
+    await registerFinish({
+      userId: interaction.user.id,
+      userTag: interaction.user.tag,
+      source: "modal:selesai",
+      proofLink,
+      reply: async (text) => {
+        try {
+          await interaction.editReply(text);
+        } catch (e) {
+          console.log("Gagal edit reply:", e.message);
+        }
+      },
+    });
+  } catch (error) {
+    console.error("Error di registerFinish:", error.message);
+  }
 });
 
 client.on(Events.MessageCreate, async (message) => {
