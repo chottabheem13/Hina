@@ -1037,6 +1037,13 @@ async function registerSchedules() {
       config.logbookReminderCron,
       async () => {
         try {
+          // Skip reminder on Sunday (hari minggu/libur)
+          const now = new Date();
+          const dayOfWeek = now.getDay(); // 0 = Sunday
+          if (dayOfWeek === 0) {
+            return;
+          }
+
           const pendingUserIds = getPendingLogbookUserIds();
           if (pendingUserIds.length === 0) {
             return;
