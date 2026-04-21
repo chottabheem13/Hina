@@ -511,6 +511,27 @@ async function getLogbookHistory(weekStart, weekEnd) {
     .filter((row) => row.weekKey >= weekStart && row.weekKey <= weekEnd);
 }
 
+async function hasUserSubmittedLogbookOnDate(userId, dateLabel) {
+  if (!sheetsClient) {
+    return false;
+  }
+
+  const response = await sheetsClient.spreadsheets.values.get({
+    spreadsheetId: config.spreadsheetId,
+    range: `${config.spreadsheetLogbookHistoryTabName}!A:F`,
+  });
+
+  const values = response.data.values || [];
+  if (values.length <= 1) {
+    return false;
+  }
+
+  const rows = values.slice(1);
+  return rows.some((row) => {
+    return row[2] === userId && row[1] === dateLabel;
+  });
+}
+
 module.exports = {
   isSheetsConfigured,
   ensureHeaderRow,
@@ -528,4 +549,5 @@ module.exports = {
   getWeeklyLogbookRecap,
   appendLogbookHistory,
   getLogbookHistory,
+  hasUserSubmittedLogbookOnDate,
 };

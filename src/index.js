@@ -266,9 +266,8 @@ async function hasUserSubmittedLogbookToday(userId) {
   if (sheets.isSheetsConfigured()) {
     try {
       const today = todayDateString();
-      const history = await sheets.getLogbookHistory(today, today);
-      const userHistory = history.filter(h => h.userId === userId);
-      if (userHistory.length > 0) {
+      const hasSubmitted = await sheets.hasUserSubmittedLogbookOnDate(userId, today);
+      if (hasSubmitted) {
         // User sudah isi, tambahkan ke memory
         logbookReportedToday.add(userId);
         return true;
@@ -295,9 +294,8 @@ async function getPendingLogbookUserIds() {
     if (sheets.isSheetsConfigured()) {
       try {
         const today = todayDateString();
-        const history = await sheets.getLogbookHistory(today, today);
-        const userHistory = history.filter(h => h.userId === userId);
-        if (userHistory.length > 0) {
+        const hasSubmitted = await sheets.hasUserSubmittedLogbookOnDate(userId, today);
+        if (hasSubmitted) {
           // User sudah isi, tambahkan ke memory
           logbookReportedToday.add(userId);
           continue;
