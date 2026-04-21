@@ -17,6 +17,7 @@ const cron = require("node-cron");
 const config = require("./config");
 const sheets = require("./sheets");
 const taskHandler = require("./taskHandler");
+const aiHandler = require("./aiHandler");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -1128,6 +1129,49 @@ async function handleLogbookReportMessage(message) {
   ]);
 }
 
+async function handleAIChatMessage(message) {
+  if (!config.aiChatChannelId) {
+    return;
+  }
+
+  if (message.channelId !== config.aiChatChannelId) {
+    return;
+  }
+
+  if (!aiHandler.isAIConfigured()) {
+    return;
+  }
+
+  if (!aiHandler.isUserAllowed(message.author.id)) {
+    return;
+  }
+
+  // Skip jika pesan kosong atau hanya command bot lain
+  const content = message.content.trim();
+  if (!content || content.startsWith("/")) {
+    return;
+  }
+
+  try {
+    // Show typing indicator
+    await message.channel.sendTyping();
+
+    const result = await aiHandler.handleAIChat({
+      userId: message.author.id,
+      message: content,
+    });
+
+    if (result.error) {
+      await message.reply({ content: `❌ ${result.error}`, ephemeral: false });
+    } else {
+      const response = result.response.length > 1900 ? result.response.substring(0, 1900) + "..." : result.response;
+      await message.reply({ content: `🤖 ${response}` });
+    }
+  } catch (error) {
+    console.error("Error di AI chat channel:", error.message);
+  }
+}
+
 function buildAdminSlashCommands() {
   return [
     new SlashCommandBuilder()
@@ -1193,6 +1237,24 @@ function buildAdminSlashCommands() {
           .setDescription("Batalkan task (admin only)")
           .addStringOption((option) => option.setName("task_id").setDescription("ID task (contoh: T001)").setRequired(true))
       ),
+    new SlashCommandBuilder()
+      .setName("ai")
+      .setDescription("AI Assistant - Tanya apa aja atau chat dengan Hina AI")
+      .addSubcommand((sub) =>
+        sub
+          .setName("ask")
+          .setDescription("Tanya pertanyaan sekali tanpa memori percakapan")
+          .addStringOption((option) => option.setName("prompt").setDescription("Pertanyaan atau prompt kamu").setRequired(true))
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("chat")
+          .setDescription("Chat dengan AI yang ingat konteks percakapan")
+          .addStringOption((option) => option.setName("message").setDescription("Pesan kamu").setRequired(true))
+      )
+      .addSubcommand((sub) => sub.setName("clear").setDescription("Hapus riwayat percakapan AI kamu"))
+      .addSubcommand((sub) => sub.setName("tasks").setDescription("Dapatkan analisis AI untuk task-task kamu"))
+      .addSubcommand((sub) => sub.setName("help").setDescription("Tampilkan bantuan AI assistant")),
   ].map((cmd) => cmd.toJSON());
 }
 
@@ -1303,6 +1365,117 @@ async function handleSlashCommand(interaction) {
     return;
   }
 
+  // AI Assistant Commands
+  if (interaction.commandName === "ai") {
+    const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "ask") {
+      const prompt = interaction.options.getString("prompt", true);
+
+      try {
+        await interaction.deferReply({ ephemeral: true });
+      } catch (error) {
+        if (error.code === 10062 || error.code === 40060) {
+          console.log("Interaction sudah expired/acknowledged, skip");
+          return;
+        }
+        throw error;
+      }
+
+      const result = await aiHandler.handleAIAsk({
+        userId: interaction.user.id,
+        prompt,
+      });
+
+      if (result.error) {
+        await interaction.editReply({ content: `❌ ${result.error}` });
+      } else {
+        const response = result.response.length > 1900 ? result.response.substring(0, 1900) + "..." : result.response;
+        await interaction.editReply({ content: `🤖 **Hina AI**\n\n${response}` });
+      }
+      return;
+    }
+
+    if (subcommand === "chat") {
+      const message = interaction.options.getString("message", true);
+
+      try {
+        await interaction.deferReply({ ephemeral: true });
+      } catch (error) {
+        if (error.code === 10062 || error.code === 40060) {
+          console.log("Interaction sudah expired/acknowledged, skip");
+          return;
+        }
+        throw error;
+      }
+
+      const result = await aiHandler.handleAIChat({
+        userId: interaction.user.id,
+        message,
+      });
+
+      if (result.error) {
+        await interaction.editReply({ content: `❌ ${result.error}` });
+      } else {
+        const response = result.response.length > 1900 ? result.response.substring(0, 1900) + "..." : result.response;
+        await interaction.editReply({ content: `💬 **Hina AI Chat**\n\n${response}` });
+      }
+      return;
+    }
+
+    if (subcommand === "clear") {
+      aiHandler.clearConversationHistory(interaction.user.id);
+      await interaction.reply({ content: "✅ Riwayat percakapan AI kamu sudah dihapus.", ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "tasks") {
+      try {
+        await interaction.deferReply({ ephemeral: true });
+      } catch (error) {
+        if (error.code === 10062 || error.code === 40060) {
+          console.log("Interaction sudah expired/acknowledged, skip");
+          return;
+        }
+        throw error;
+      }
+
+      const result = await aiHandler.handleAITasksSummary({
+        userId: interaction.user.id,
+      });
+
+      if (result.error) {
+        await interaction.editReply({ content: `❌ ${result.error}` });
+      } else {
+        const response = result.response.length > 1900 ? result.response.substring(0, 1900) + "..." : result.response;
+        await interaction.editReply({ content: `📋 **Analisis Task AI**\n\n${response}` });
+      }
+      return;
+    }
+
+    if (subcommand === "help") {
+      const helpEmbed = new EmbedBuilder()
+        .setColor(0x3498db)
+        .setTitle("🤖 Hina AI Assistant")
+        .setDescription("AI-powered assistant buat tanya jawab dan bantu task management")
+        .addFields(
+          { name: "/ai ask <prompt>", value: "Tanya pertanyaan sekali tanpa konteks percakapan", inline: false },
+          { name: "/ai chat <message>", value: "Chat dengan AI yang ingat percakapan (memori 30 menit)", inline: false },
+          { name: "/ai clear", value: "Hapus riwayat percakapan", inline: false },
+          { name: "/ai tasks", value: "Dapatkan analisis AI untuk task-task kamu", inline: false },
+          { name: "Fitur", value: "• Q&A umum\n• Analisis & prioritask task\n• Info shift system\n• Guidance logbook\n• Support Indo/English", inline: false }
+        )
+        .setFooter({ text: `Powered by ${config.aiModel}` })
+        .setTimestamp(new Date());
+
+      await interaction.reply({ embeds: [helpEmbed], ephemeral: true });
+      return;
+    }
+
+    await interaction.reply({ content: "❌ Subcommand ai tidak valid.", ephemeral: true });
+    return;
+  }
+
   // Admin-only commands below
   if (!isAdminUser(interaction.user.id)) {
     await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
@@ -1323,7 +1496,15 @@ async function handleSlashCommand(interaction) {
       weekRange = getWeekRange(lastWeekDate);
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    try {
+      await interaction.deferReply({ ephemeral: true });
+    } catch (error) {
+      if (error.code === 10062 || error.code === 40060) {
+        console.log("Interaction sudah expired/acknowledged, skip");
+        return;
+      }
+      throw error;
+    }
 
     const recapData = await generateWeeklyLogbookRecap(weekRange);
 
@@ -1630,6 +1811,12 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.log("Google Sheets belum dikonfigurasi, log harian ke sheet nonaktif.");
   }
 
+  // Initialize AI handler
+  if (aiHandler.isAIConfigured()) {
+    aiHandler.initializeAll();
+    aiHandler.startCleanupScheduler();
+  }
+
   await registerSlashCommands();
   await registerSchedules();
 });
@@ -1819,6 +2006,7 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     await handleLogbookReportMessage(message);
     await handleMessageCheckin(message);
+    await handleAIChatMessage(message);
   } catch (error) {
     console.error("Error saat memproses MessageCreate:", error);
   }

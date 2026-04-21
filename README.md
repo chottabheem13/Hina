@@ -49,6 +49,19 @@ npm install
    - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_PRIVATE_KEY`
 
+## 4) Setup AI Assistant (Opsional)
+
+1. Dapatkan OpenAI API key dari https://platform.openai.com/api-keys
+2. Isi variabel:
+   - `OPENAI_API_KEY` - API key dari OpenAI
+   - `AI_MODEL` - Model yang dipakai (default: `gpt-4o-mini`)
+   - `AI_MAX_TOKENS` - Max tokens per response (default: 1000)
+   - `AI_TEMPERATURE` - Kreativitas 0-10 (default: 7)
+   - `AI_CONVERSATION_MEMORY_MINUTES` - Durasi memori percakapan (default: 30)
+   - `AI_SYSTEM_PROMPT` - Custom system prompt (opsional)
+   - `AI_ALLOWED_USER_IDS` - Whitelist user IDs (kosongkan untuk semua user)
+   - `AI_RATE_LIMIT_PER_MINUTE` - Rate limit per user (default: 10)
+
 ## 4) Jalankan Bot
 
 ```bash
@@ -88,6 +101,14 @@ npm start
 - `start` (hanya di channel check-in): check-in mulai shift aktif.
 - `selesai <link>` (hanya di channel check-in): finalisasi setelah shift berakhir dengan link bukti.
 - Tombol `Selesai`: akan membuka modal untuk input link bukti.
+
+## Command AI (Slash)
+
+- `/ai ask <prompt>`: Tanya pertanyaan sekali tanpa memori percakapan.
+- `/ai chat <message>`: Chat dengan AI yang ingat konteks percakapan (memori 30 menit).
+- `/ai clear`: Hapus riwayat percakapan AI.
+- `/ai tasks`: Dapatkan analisis AI untuk task-task kamu (prioritas, deadline, dsb).
+- `/ai help`: Tampilkan bantuan AI assistant.
 
 ## Command Admin (Slash)
 

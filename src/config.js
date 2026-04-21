@@ -86,6 +86,35 @@ const config = {
   googleServiceAccountEmail: (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "").trim(),
   googlePrivateKey: (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim(),
   timezone: (process.env.TIMEZONE || "Asia/Jakarta").trim(),
+  // AI Assistant Configuration
+  openaiApiKey: (process.env.OPENAI_API_KEY || "").trim(),
+  claudeApiKey: (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN || "").trim(),
+  claudeBaseUrl: (process.env.ANTHROPIC_BASE_URL || "").trim(),
+  aiProvider: (process.env.AI_PROVIDER || "auto").trim(), // "openai", "claude", or "auto"
+  aiModel: (process.env.AI_MODEL || "qwen-plus").trim(),
+  aiBaseUrl: (process.env.AI_BASE_URL || "").trim(),
+  aiMaxTokens: parsePositiveInt(process.env.AI_MAX_TOKENS, 1000),
+  aiTemperature: parsePositiveInt(process.env.AI_TEMPERATURE || "7", 7) / 10,
+  aiConversationMemoryMinutes: parsePositiveInt(process.env.AI_CONVERSATION_MEMORY_MINUTES, 30),
+  aiSystemPrompt: (process.env.AI_SYSTEM_PROMPT || "").trim(),
+  aiAllowedUserIds: parseUserIds(process.env.AI_ALLOWED_USER_IDS || ""),
+  aiRateLimitPerMinute: parsePositiveInt(process.env.AI_RATE_LIMIT_PER_MINUTE, 10),
+  aiChatChannelId: (process.env.AI_CHAT_CHANNEL_ID || "").trim(),
 };
+
+// AI configuration validation
+const hasOpenAI = Boolean(config.openaiApiKey);
+const hasClaude = Boolean(config.claudeApiKey);
+const provider = config.aiProvider.toLowerCase();
+
+if (!hasOpenAI && !hasClaude) {
+  console.warn("WARNING: No AI API keys set - AI features will be disabled");
+} else {
+  let activeProvider = provider;
+  if (provider === "auto") {
+    activeProvider = hasClaude ? "claude" : "openai";
+  }
+  console.log(`AI features enabled with provider: ${activeProvider}${provider === "auto" ? " (auto)" : ""}`);
+}
 
 module.exports = config;
