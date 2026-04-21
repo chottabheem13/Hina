@@ -28,6 +28,7 @@ global.client = client;
 const LOGIN_RETRY_MS = 15000;
 const CHECKIN_BUTTON_PREFIX = "shift-start:";
 const FINISH_BUTTON_PREFIX = "shift-finish:";
+const TASK_DONE_BUTTON_PREFIX = "task-done:";
 const FINISH_MODAL_PREFIX = "shift-finish-modal:";
 const LOGBOOK_DONE_BUTTON_PREFIX = "logbook-done:";
 const FINISH_GIF_URL = "https://media1.tenor.com/m/uCHykOR2BTwAAAAd/girls-band-cry-hina.gif";
@@ -1679,6 +1680,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
         });
       } catch (error) {
         console.error("Error di registerLogbookDoneByButton:", error.message);
+      }
+      return;
+    }
+
+    const isTaskDoneButton = interaction.customId.startsWith(TASK_DONE_BUTTON_PREFIX);
+    if (isTaskDoneButton) {
+      const taskId = interaction.customId.slice(TASK_DONE_BUTTON_PREFIX.length);
+      try {
+        await interaction.deferReply({ ephemeral: false });
+      } catch (error) {
+        if (error.code === 10062 || error.code === 40060) {
+          console.log("Button interaction sudah expired/acknowledged, skip");
+          return;
+        }
+        throw error;
+      }
+      try {
+        await taskHandler.markTaskDoneByButton({
+          userId: interaction.user.id,
+          userTag: interaction.user.tag,
+          taskId,
+          reply: async (text) => {
+            try {
+              await interaction.editReply(text);
+            } catch (e) {
+              console.log("Gagal edit reply:", e.message);
+            }
+          },
+        });
+      } catch (error) {
+        console.error("Error di markTaskDoneByButton:", error.message);
       }
       return;
     }

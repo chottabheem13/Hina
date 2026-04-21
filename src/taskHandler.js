@@ -1,6 +1,8 @@
-const { EmbedBuilder, userMention, channelMention } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const config = require("./config");
 const sheets = require("./sheets");
+
+const TASK_DONE_BUTTON_PREFIX = "task-done:";
 
 const TASK_REMINDER_INTERVAL_MS = 30 * 60 * 1000; // 30 menit
 const OVERDUE_REMINDER_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 jam
@@ -130,6 +132,16 @@ async function sendDirectMessage(userId, payload) {
   }
 }
 
+function createTaskDoneButtonRow(taskId, disabled = false) {
+  const button = new ButtonBuilder()
+    .setCustomId(`${TASK_DONE_BUTTON_PREFIX}${taskId}`)
+    .setLabel("Selesai")
+    .setStyle(ButtonStyle.Success)
+    .setDisabled(disabled);
+
+  return new ActionRowBuilder().addComponents(button);
+}
+
 async function sendLog(title, fields = []) {
   if (!global.client) {
     return;
@@ -193,10 +205,13 @@ async function assignTask({ assignedBy, assignedByName, targetUser, description,
       { name: "Deadline", value: deadlineFormatted, inline: false },
       { name: "Deskripsi", value: description, inline: false }
     )
-    .setFooter({ text: `Ketik /task done ${taskId} kalau sudah selesai.` })
+    .setFooter({ text: "Klik tombol Selesai kalau sudah selesai." })
     .setTimestamp(new Date());
 
-  await sendDirectMessage(targetUser.id, { embeds: [dmEmbed] });
+  await sendDirectMessage(targetUser.id, {
+    embeds: [dmEmbed],
+    components: [createTaskDoneButtonRow(taskId)],
+  });
 
   // Konfirmasi ke admin
   const confirmEmbed = new EmbedBuilder()
@@ -260,7 +275,7 @@ async function listTasks({ userId, reply }) {
   await reply({ embeds: [embed], ephemeral: true });
 }
 
-async function markTaskDone({ userId, taskId, reply }) {
+async function markTaskDone({ userId, taskId, reply, disableButton = null }) {
   const task = await sheets.getTaskById(taskId);
 
   if (!task) {
@@ -318,7 +333,15 @@ async function markTaskDone({ userId, taskId, reply }) {
     { name: "Selesai Pada", value: doneAtFormatted },
   ]);
 
-  await reply({ embeds: [notificationEmbed], ephemeral: true });
+  // Update button jadi disabled
+  if (disableButton) {
+    await reply({
+      embeds: [notificationEmbed],
+      components: [createTaskDoneButtonRow(taskId, true)],
+    });
+  } else {
+    await reply({ embeds: [notificationEmbed], ephemeral: true });
+  }
 }
 
 async function cancelTask({ taskId, cancelledBy, reply }) {
@@ -426,10 +449,13 @@ async function sendTaskReminders() {
             { name: "Waktu Tersisa", value: formatRemainingTime(localDeadline), inline: false },
             { name: "Task", value: task.taskDesc, inline: false }
           )
-          .setFooter({ text: "Jangan lupa selesaikan ya!" })
+          .setFooter({ text: "Klik tombol Selesai kalau sudah selesai." })
           .setTimestamp(new Date());
 
-        await sendDirectMessage(task.discordId, { embeds: [dmEmbed] });
+        await sendDirectMessage(task.discordId, {
+          embeds: [dmEmbed],
+          components: [createTaskDoneButtonRow(task.taskId)],
+        });
         await sheets.updateTaskStatus(task.taskId, "pending", { lastReminded: now.toISOString() });
         reminderSent = true;
       }
@@ -447,10 +473,13 @@ async function sendTaskReminders() {
             { name: "Waktu Tersisa", value: formatRemainingTime(localDeadline), inline: false },
             { name: "Task", value: task.taskDesc, inline: false }
           )
-          .setFooter({ text: "Segera selesaikan sebelum deadline!" })
+          .setFooter({ text: "Segera selesaikan, klik tombol Selesai!" })
           .setTimestamp(new Date());
 
-        await sendDirectMessage(task.discordId, { embeds: [dmEmbed] });
+        await sendDirectMessage(task.discordId, {
+          embeds: [dmEmbed],
+          components: [createTaskDoneButtonRow(task.taskId)],
+        });
         await sheets.updateTaskStatus(task.taskId, "pending", { lastReminded: now.toISOString() });
         reminderSent = true;
       }
@@ -469,10 +498,13 @@ async function sendTaskReminders() {
             { name: "Status", value: formatRemainingTime(localDeadline), inline: false },
             { name: "Task", value: task.taskDesc, inline: false }
           )
-          .setFooter({ text: `Segera selesaikan dan ketik /task done ${task.taskId}` })
+          .setFooter({ text: "Segera selesaikan dengan klik tombol Selesai!" })
           .setTimestamp(new Date());
 
-        await sendDirectMessage(task.discordId, { embeds: [dmEmbed] });
+        await sendDirectMessage(task.discordId, {
+          embeds: [dmEmbed],
+          components: [createTaskDoneButtonRow(task.taskId)],
+        });
 
         // Notif ke channel admin
         const adminEmbed = new EmbedBuilder()
@@ -514,10 +546,13 @@ async function sendTaskReminders() {
             { name: "Status", value: formatRemainingTime(localDeadline), inline: false },
             { name: "Task", value: task.taskDesc, inline: false }
           )
-          .setFooter({ text: `Ketik /task done ${task.taskId} setelah selesai.` })
+          .setFooter({ text: "Klik tombol Selesai setelah menyelesaikan task." })
           .setTimestamp(new Date());
 
-        await sendDirectMessage(task.discordId, { embeds: [dmEmbed] });
+        await sendDirectMessage(task.discordId, {
+          embeds: [dmEmbed],
+          components: [createTaskDoneButtonRow(task.taskId)],
+        });
         await sheets.updateTaskStatus(task.taskId, "pending", { lastReminded: now.toISOString() });
         reminderSent = true;
       }
@@ -535,14 +570,26 @@ function startTaskReminderScheduler() {
   console.log(`Task reminder scheduler aktif: setiap ${TASK_REMINDER_INTERVAL_MS / 1000 / 60} menit`);
 }
 
+async function markTaskDoneByButton({ userId, userTag, taskId, reply }) {
+  await markTaskDone({
+    userId,
+    taskId,
+    reply,
+    disableButton: true,
+  });
+}
+
 module.exports = {
+  TASK_DONE_BUTTON_PREFIX,
   assignTask,
   listTasks,
   markTaskDone,
+  markTaskDoneByButton,
   cancelTask,
   sendTaskReminders,
   startTaskReminderScheduler,
   isAdminUser,
   parseDeadline,
   formatDateTime,
+  createTaskDoneButtonRow,
 };
