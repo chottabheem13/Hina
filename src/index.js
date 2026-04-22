@@ -108,33 +108,32 @@ function nowInTimezone() {
 
 /**
  * Create a Date object for today at the given time (HH:MM format) in configured timezone
- * Creates an ISO string with the timezone offset and parses it
  */
 function createDateFromTimeLabel(timeLabel) {
   const [hour, minute] = timeLabel.split(":").map(Number);
+  const now = new Date();
 
   // Get date parts in configured timezone
-  const now = new Date();
-  const formatter = new Intl.DateTimeFormat("en-CA", {
+  const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: config.timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  const dateStr = formatter.format(now); // YYYY-MM-DD
+  const parts = formatter.formatToParts(now);
+  const year = parseInt(parts.find(p => p.type === "year").value);
+  const month = parseInt(parts.find(p => p.type === "month").value) - 1;
+  const day = parseInt(parts.find(p => p.type === "day").value);
 
-  // Get timezone offset (e.g., GMT+07:00 for Asia/Jakarta)
-  const offsetFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: config.timezone,
-    timeZoneName: "longOffset"
-  });
-  const offsetParts = offsetFormatter.formatToParts(now);
-  const tzName = offsetParts.find(p => p.type === "timeZoneName")?.value || "GMT+00:00";
-  const offsetStr = tzName.replace("GMT", "").replace("UTC", "");
+  // Create a tentative date at the specified time
+  const tentativeDate = new Date(year, month, day, hour, minute, 0);
 
-  // Build ISO-like string with timezone offset
-  const isoStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00${offsetStr}`;
-  return new Date(isoStr);
+  // Convert to configured timezone string, then parse back to get correct UTC time
+  // This works because toLocaleString with timeZone gives the correct local time
+  const tzString = tentativeDate.toLocaleString("en-US", { timeZone: config.timezone });
+  const result = new Date(tzString);
+
+  return result;
 }
 
 function normalizeText(text) {
@@ -608,13 +607,16 @@ async function sendSessionNotification(session, mode) {
 
 async function appendShiftRecordSafe(record) {
   if (!sheets.isSheetsConfigured()) {
-    return;
+    console.warn("⚠️ Google Sheets tidak terkonfigurasi, skip simpan shift record");
+    return false;
   }
 
   try {
     await sheets.appendShiftRecord(record);
+    return true;
   } catch (error) {
     console.error("Gagal simpan shift record ke Google Sheets:", error);
+    return false;
   }
 }
 
@@ -651,7 +653,7 @@ async function refreshSessionMessage(session) {
 
 async function closeSession(session, reason) {
   if (session.closed) {
-    return;
+    return { closed: false, reason: "already_closed" };
   }
 
   session.closed = true;
@@ -663,12 +665,17 @@ async function closeSession(session, reason) {
   const pendingStarts = getPendingAssignees(session);
   const pendingFinishes = getPendingFinishes(session);
 
+  let savedCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+
   for (const assignee of session.assignees) {
     const start = session.checkins.get(assignee.userId);
     const finish = session.finishes.get(assignee.userId);
 
     // Jangan tulis log apa pun untuk user yang belum menekan start.
     if (!start) {
+      skippedCount++;
       continue;
     }
 
@@ -679,7 +686,7 @@ async function closeSession(session, reason) {
       checkinAtIso = finish.finishedAt.toISOString();
     }
 
-    await appendShiftRecordSafe({
+    const saved = await appendShiftRecordSafe({
       timestampIso: new Date().toISOString(),
       dayKey: session.dayKey,
       dateLabel: session.dateLabel,
@@ -693,6 +700,11 @@ async function closeSession(session, reason) {
       source: reason,
       evidenceLink: finish ? finish.proofLink || "" : "",
     });
+    if (saved) {
+      savedCount++;
+    } else {
+      failedCount++;
+    }
   }
 
   const closeMessage =
@@ -709,6 +721,27 @@ async function closeSession(session, reason) {
               : "-"
           }`,
         ].join("\n");
+
+  for (const assignee of session.assignees) {
+    await sendDirectMessage(assignee.userId, { content: closeMessage });
+  }
+
+  await sendLog("🏁 Shift Ditutup", [
+    { name: "Shift", value: `${session.shiftLabel} (${session.startLabel}-${session.endLabel})`, inline: true },
+    { name: "Hari", value: `${WEEKDAY_ID_LABEL[session.weekdayKey] || session.weekdayKey}, ${session.dateLabel}`, inline: true },
+    { name: "Alasan", value: reason, inline: true },
+    {
+      name: "Belum Selesai",
+      value: pendingFinishes.length > 0 ? pendingFinishes.map((entry) => userMention(entry.userId)).join(" ") : "-",
+    },
+    { name: "Sheet", value: `✅ ${savedCount} | ❌ ${failedCount} | ⏭️ ${skippedCount}`, inline: true },
+  ]);
+
+  activeSessions.delete(session.sessionId);
+  archiveSession(session);
+
+  return { closed: true, savedCount, failedCount, skippedCount };
+}
 
   for (const assignee of session.assignees) {
     await sendDirectMessage(assignee.userId, { content: closeMessage });
@@ -1658,13 +1691,29 @@ async function handleSlashCommand(interaction) {
     }
 
     const results = [];
+    let totalSaved = 0;
+    let totalFailed = 0;
+    let totalSkipped = 0;
+
     for (const session of sessions) {
-      await closeSession(session, "manual_close");
-      results.push(`${session.shiftLabel} (${session.dateLabel})`);
+      const result = await closeSession(session, "manual_close");
+      if (result.closed) {
+        results.push(`${session.shiftLabel} (${session.dateLabel})`);
+        totalSaved += result.savedCount || 0;
+        totalFailed += result.failedCount || 0;
+        totalSkipped += result.skippedCount || 0;
+      }
+    }
+
+    let replyContent = `✅ Shift berikut telah ditutup:\n${results.join("\n")}\n\n`;
+    replyContent += `📊 Sheet: ✅ ${totalSaved} disimpan | ❌ ${totalFailed} gagal | ⏭️ ${totalSkipped} belum start`;
+
+    if (totalFailed > 0 || !sheets.isSheetsConfigured()) {
+      replyContent += "\n\n⚠️ Cek konfigurasi Google Sheets di .env (GSHEET_SPREADSHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY)";
     }
 
     await interaction.reply({
-      content: `✅ Shift berikut telah ditutup dan disimpan ke sheets:\n${results.join("\n")}`,
+      content: replyContent,
       ephemeral: true,
     });
   }
