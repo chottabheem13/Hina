@@ -232,11 +232,13 @@ function buildSystemPrompt() {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: config.timezone
   });
   const currentTime = now.toLocaleTimeString('id-ID', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: config.timezone
   });
 
   return `${basePrompt}\n\n## Tanggal Hari Ini\nHari ini adalah ${currentDate}, jam ${currentTime} (timezone: ${config.timezone}).`;
