@@ -106,6 +106,31 @@ function nowInTimezone() {
   return new Date();
 }
 
+/**
+ * Create a Date object for today at the given time (HH:MM format) in configured timezone
+ */
+function createDateFromTimeLabel(timeLabel) {
+  const [hour, minute] = timeLabel.split(":").map(Number);
+  const now = new Date();
+  // Create date in the configured timezone
+  const result = new Intl.DateTimeFormat("en-US", {
+    timeZone: config.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(now);
+
+  // Parse the formatted string and set the specified time
+  const [month, day, year, hr, min, sec] = result.match(/\d+/g).map(Number);
+  const dateInTimezone = new Date(year, month - 1, day, hour, minute, 0);
+
+  return dateInTimezone;
+}
+
 function normalizeText(text) {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -755,8 +780,8 @@ async function startShiftSession(shiftDef) {
     shiftLabel: shiftDef.label,
     startLabel: shiftDef.startLabel,
     endLabel: shiftDef.endLabel,
-    startAt: new Date(),
-    endAt: new Date(Date.now() + shiftDef.durationMinutes * 60 * 1000),
+    startAt: createDateFromTimeLabel(shiftDef.startLabel),
+    endAt: createDateFromTimeLabel(shiftDef.endLabel),
     channelId: null,
     messageId: null,
     assignees,
