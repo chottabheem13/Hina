@@ -1220,6 +1220,7 @@ function buildAdminSlashCommands() {
     new SlashCommandBuilder().setName("tes-reminder-logbook").setDescription("Kirim reminder logbook manual"),
     new SlashCommandBuilder().setName("status-shift").setDescription("Lihat status shift aktif"),
     new SlashCommandBuilder().setName("rekap-hari-ini").setDescription("Lihat rekap shift hari ini"),
+    new SlashCommandBuilder().setName("shift-done").setDescription("Tutup shift aktif dan simpan ke sheets (Admin only)"),
     new SlashCommandBuilder()
       .setName("recap-mingguan")
       .setDescription("Lihat recap logbook mingguan (Admin only)")
@@ -1641,6 +1642,31 @@ async function handleSlashCommand(interaction) {
       lines.push(sheetRecap);
     }
     await interaction.reply({ content: lines.join("\n"), ephemeral: true });
+  }
+
+  if (interaction.commandName === "shift-done") {
+    // Admin only
+    if (!taskHandler.isAdminUser(interaction.user.id)) {
+      await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+      return;
+    }
+
+    const sessions = Array.from(activeSessions.values()).filter((s) => !s.closed);
+    if (sessions.length === 0) {
+      await interaction.reply({ content: "ℹ️ Tidak ada shift aktif untuk ditutup.", ephemeral: true });
+      return;
+    }
+
+    const results = [];
+    for (const session of sessions) {
+      await closeSession(session, "manual_close");
+      results.push(`${session.shiftLabel} (${session.dateLabel})`);
+    }
+
+    await interaction.reply({
+      content: `✅ Shift berikut telah ditutup dan disimpan ke sheets:\n${results.join("\n")}`,
+      ephemeral: true,
+    });
   }
 
   if (interaction.commandName === "task") {
