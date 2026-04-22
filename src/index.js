@@ -108,27 +108,33 @@ function nowInTimezone() {
 
 /**
  * Create a Date object for today at the given time (HH:MM format) in configured timezone
+ * Creates an ISO string with the timezone offset and parses it
  */
 function createDateFromTimeLabel(timeLabel) {
   const [hour, minute] = timeLabel.split(":").map(Number);
+
+  // Get date parts in configured timezone
   const now = new Date();
-  // Create date in the configured timezone
-  const result = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: config.timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  }).format(now);
+  });
+  const dateStr = formatter.format(now); // YYYY-MM-DD
 
-  // Parse the formatted string and set the specified time
-  const [month, day, year, hr, min, sec] = result.match(/\d+/g).map(Number);
-  const dateInTimezone = new Date(year, month - 1, day, hour, minute, 0);
+  // Get timezone offset (e.g., GMT+07:00 for Asia/Jakarta)
+  const offsetFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: config.timezone,
+    timeZoneName: "longOffset"
+  });
+  const offsetParts = offsetFormatter.formatToParts(now);
+  const tzName = offsetParts.find(p => p.type === "timeZoneName")?.value || "GMT+00:00";
+  const offsetStr = tzName.replace("GMT", "").replace("UTC", "");
 
-  return dateInTimezone;
+  // Build ISO-like string with timezone offset
+  const isoStr = `${dateStr}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00${offsetStr}`;
+  return new Date(isoStr);
 }
 
 function normalizeText(text) {
