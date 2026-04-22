@@ -743,23 +743,6 @@ async function closeSession(session, reason) {
   return { closed: true, savedCount, failedCount, skippedCount };
 }
 
-  for (const assignee of session.assignees) {
-    await sendDirectMessage(assignee.userId, { content: closeMessage });
-  }
-
-  await sendLog("🏁 Shift Ditutup", [
-    { name: "Shift", value: `${session.shiftLabel} (${session.startLabel}-${session.endLabel})`, inline: true },
-    { name: "Hari", value: `${WEEKDAY_ID_LABEL[session.weekdayKey] || session.weekdayKey}, ${session.dateLabel}`, inline: true },
-    { name: "Alasan", value: reason, inline: true },
-    {
-      name: "Belum Selesai",
-      value: pendingFinishes.length > 0 ? pendingFinishes.map((entry) => userMention(entry.userId)).join(" ") : "-",
-    },
-  ]);
-
-  activeSessions.delete(session.sessionId);
-  archiveSession(session);
-}
 async function sendFollowupReminder(session) {
   if (session.closed) {
     return;
