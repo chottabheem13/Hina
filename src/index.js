@@ -80,8 +80,8 @@ const SHIFT_DEFINITIONS = [
   {
     id: "shift-3",
     label: "Shift 3",
-    startLabel: "16:00",
-    endLabel: "19:00",
+    startLabel: "15:00",
+    endLabel: "18:00",
     durationMinutes: 180,
     primaryByDay: {
       monday: "Cilla",

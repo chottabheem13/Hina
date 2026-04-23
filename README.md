@@ -86,7 +86,7 @@ npm start
   - Jumat: Sharon
   - Sabtu: Cilla
   - Minggu: Libur
-- Shift 3 (16:00-19:00)
+- Shift 3 (15:00-18:00)
   - Senin: Sharon
   - Selasa: Abi
   - Rabu: Abi
