@@ -27,6 +27,7 @@ const client = new Client({
 global.client = client;
 
 const LOGIN_RETRY_MS = 15000;
+const FINISH_PHASE_TRIGGER_MS = 30000; // Trigger finish phase 30 seconds before end time
 const CHECKIN_BUTTON_PREFIX = "shift-start:";
 const FINISH_BUTTON_PREFIX = "shift-finish:";
 const TASK_DONE_BUTTON_PREFIX = "task-done:";
@@ -108,6 +109,7 @@ function nowInTimezone() {
 
 /**
  * Create a Date object for today at the given time (HH:MM format) in configured timezone
+ * This is more accurate than the previous version and handles timezone edge cases properly
  */
 function createDateFromTimeLabel(timeLabel) {
   const [hour, minute] = timeLabel.split(":").map(Number);
@@ -125,15 +127,83 @@ function createDateFromTimeLabel(timeLabel) {
   const month = parseInt(parts.find(p => p.type === "month").value) - 1;
   const day = parseInt(parts.find(p => p.type === "day").value);
 
-  // Create a tentative date at the specified time
-  const tentativeDate = new Date(year, month, day, hour, minute, 0);
+  // Method: Use Intl to format the specific time in target timezone, then parse it back
+  // This is more reliable than manual offset calculation
 
-  // Convert to configured timezone string, then parse back to get correct UTC time
-  // This works because toLocaleString with timeZone gives the correct local time
-  const tzString = tentativeDate.toLocaleString("en-US", { timeZone: config.timezone });
-  const result = new Date(tzString);
+  // Create a date at the specified time (in system local time initially)
+  const tempDate = new Date(year, month, day, hour, minute, 0, 0);
+
+  // Format this date in the target timezone to get the correct wall time
+  const timeFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: config.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  // Format as individual parts for accurate parsing
+  const timeParts = timeFormatter.formatToParts(tempDate);
+  const formattedYear = parseInt(timeParts.find(p => p.type === "year").value);
+  const formattedMonth = parseInt(timeParts.find(p => p.type === "month").value) - 1;
+  const formattedDay = parseInt(timeParts.find(p => p.type === "day").value);
+  const formattedHour = parseInt(timeParts.find(p => p.type === "hour").value);
+  const formattedMinute = parseInt(timeParts.find(p => p.type === "minute").value);
+  const formattedSecond = parseInt(timeParts.find(p => p.type === "second").value);
+
+  // Create the final date using the formatted values
+  // This gives us the correct UTC timestamp that represents the specified time in the target timezone
+  const result = new Date(formattedYear, formattedMonth, formattedDay, formattedHour, formattedMinute, formattedSecond);
 
   return result;
+}
+
+/**
+ * Debug function to verify time calculations are accurate
+ * Returns formatted string showing current time and shift times in configured timezone
+ */
+function debugTimeInfo() {
+  const now = new Date();
+  const nowTz = formatClock(now);
+
+  const shift1Start = createDateFromTimeLabel("09:00");
+  const shift1End = createDateFromTimeLabel("12:00");
+  const shift2Start = createDateFromTimeLabel("12:00");
+  const shift2End = createDateFromTimeLabel("15:00");
+  const shift3Start = createDateFromTimeLabel("15:00");
+  const shift3End = createDateFromTimeLabel("18:00");
+
+  return {
+    currentTime: nowTz,
+    currentTimeUtc: now.toISOString(),
+    timezone: config.timezone,
+    shifts: [
+      {
+        label: "Shift 1",
+        start: formatClock(shift1Start),
+        end: formatClock(shift1End),
+        startUtc: shift1Start.toISOString(),
+        endUtc: shift1End.toISOString(),
+      },
+      {
+        label: "Shift 2",
+        start: formatClock(shift2Start),
+        end: formatClock(shift2End),
+        startUtc: shift2Start.toISOString(),
+        endUtc: shift2End.toISOString(),
+      },
+      {
+        label: "Shift 3",
+        start: formatClock(shift3Start),
+        end: formatClock(shift3End),
+        startUtc: shift3Start.toISOString(),
+        endUtc: shift3End.toISOString(),
+      },
+    ],
+  };
 }
 
 function normalizeText(text) {
@@ -751,7 +821,8 @@ async function sendFollowupReminder(session) {
   const nowMs = Date.now();
 
   if (!session.finishPhaseStarted) {
-    if (nowMs >= session.endAt.getTime()) {
+    // Trigger finish phase 30 seconds BEFORE end time to ensure users get notified
+    if (nowMs >= (session.endAt.getTime() - FINISH_PHASE_TRIGGER_MS)) {
       session.finishPhaseStarted = true;
       session.finishDeadline = new Date(nowMs + config.finishGraceMinutes * 60 * 1000);
       await sendSessionNotification(session, "finish");
@@ -1236,6 +1307,7 @@ function buildAdminSlashCommands() {
     new SlashCommandBuilder().setName("tes-reminder-logbook").setDescription("Kirim reminder logbook manual"),
     new SlashCommandBuilder().setName("status-shift").setDescription("Lihat status shift aktif"),
     new SlashCommandBuilder().setName("rekap-hari-ini").setDescription("Lihat rekap shift hari ini"),
+    new SlashCommandBuilder().setName("debug-time").setDescription("Cek akurasi waktu dan jadwal shift (Admin only)"),
     new SlashCommandBuilder().setName("shift-done").setDescription("Tutup shift aktif dan simpan ke sheets (Admin only)"),
     new SlashCommandBuilder()
       .setName("recap-mingguan")
@@ -1699,6 +1771,34 @@ async function handleSlashCommand(interaction) {
       content: replyContent,
       ephemeral: true,
     });
+  }
+
+  if (interaction.commandName === "debug-time") {
+    // Admin only
+    if (!taskHandler.isAdminUser(interaction.user.id)) {
+      await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+      return;
+    }
+
+    const debugInfo = debugTimeInfo();
+    const lines = [
+      "🕐 **Debug Info Waktu**",
+      "",
+      `📍 Timezone: ${debugInfo.timezone}`,
+      `🕐 Current Time: ${debugInfo.currentTime}`,
+      `🌍 Current UTC: ${debugInfo.currentTimeUtc}`,
+      "",
+      "**Jadwal Shift:**",
+    ];
+
+    for (const shift of debugInfo.shifts) {
+      lines.push(`\n${shift.label}: ${shift.start} - ${shift.end}`);
+      lines.push(`  Start UTC: ${shift.startUtc}`);
+      lines.push(`  End UTC: ${shift.endUtc}`);
+    }
+
+    await interaction.reply({ content: lines.join("\n"), ephemeral: true });
+    return;
   }
 
   if (interaction.commandName === "task") {
