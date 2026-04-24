@@ -824,7 +824,8 @@ async function sendFollowupReminder(session) {
     // Trigger finish phase 30 seconds BEFORE end time to ensure users get notified
     if (nowMs >= (session.endAt.getTime() - FINISH_PHASE_TRIGGER_MS)) {
       session.finishPhaseStarted = true;
-      session.finishDeadline = new Date(nowMs + config.finishGraceMinutes * 60 * 1000);
+      // Calculate finish deadline from session END time, not from current time
+      session.finishDeadline = new Date(session.endAt.getTime() + config.finishGraceMinutes * 60 * 1000);
       await sendSessionNotification(session, "finish");
       return;
     }
