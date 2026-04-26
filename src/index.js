@@ -18,6 +18,7 @@ const config = require("./config");
 const sheets = require("./sheets");
 const taskHandler = require("./taskHandler");
 const aiHandler = require("./aiHandler");
+const { SHIFT_DEFINITIONS } = require("./shiftConfig");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -27,7 +28,6 @@ const client = new Client({
 global.client = client;
 
 const LOGIN_RETRY_MS = 15000;
-const FINISH_PHASE_TRIGGER_MS = 30000; // Trigger finish phase 30 seconds before end time
 const CHECKIN_BUTTON_PREFIX = "shift-start:";
 const FINISH_BUTTON_PREFIX = "shift-finish:";
 const TASK_DONE_BUTTON_PREFIX = "task-done:";
@@ -45,57 +45,6 @@ const WEEKDAY_ID_LABEL = {
   sunday: "Minggu",
 };
 
-const SHIFT_DEFINITIONS = [
-  {
-    id: "shift-1",
-    label: "Shift 1",
-    startLabel: "09:00",
-    endLabel: "12:00",
-    durationMinutes: 180,
-    primaryByDay: {
-      monday: "Sharon",
-      tuesday: "Abi",
-      wednesday: "Abi",
-      thursday: "Sharon",
-      friday: "Abi",
-      saturday: "Sharon",
-      sunday: null,
-    },
-  },
-  {
-    id: "shift-2",
-    label: "Shift 2",
-    startLabel: "12:00",
-    endLabel: "15:00",
-    durationMinutes: 180,
-    primaryByDay: {
-      monday: "Abi",
-      tuesday: "Cilla",
-      wednesday: "Sharon",
-      thursday: "Abi",
-      friday: "Cilla",
-      saturday: "Abi",
-      sunday: null,
-    },
-  },
-  {
-    id: "shift-3",
-    label: "Shift 3",
-    startLabel: "15:00",
-    endLabel: "18:00",
-    durationMinutes: 180,
-    primaryByDay: {
-      monday: "Cilla",
-      tuesday: "Sharon",
-      wednesday: "Cilla",
-      thursday: "Cilla",
-      friday: "Sharon",
-      saturday: "Cilla",
-      sunday: null,
-    },
-  },
-];
-
 const activeSessions = new Map();
 const sessionHistoryByDay = new Map();
 const logbookReportedToday = new Set();
@@ -107,35 +56,9 @@ function nowInTimezone() {
   return new Date();
 }
 
-/**
- * Create a Date object for today at the given time (HH:MM format) in configured timezone
- * This is more accurate than the previous version and handles timezone edge cases properly
- */
-function createDateFromTimeLabel(timeLabel) {
-  const [hour, minute] = timeLabel.split(":").map(Number);
-  const now = new Date();
-
-  // Get date parts in configured timezone
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: config.timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const parts = formatter.formatToParts(now);
-  const year = parseInt(parts.find(p => p.type === "year").value);
-  const month = parseInt(parts.find(p => p.type === "month").value) - 1;
-  const day = parseInt(parts.find(p => p.type === "day").value);
-
-  // Method: Use Intl to format the specific time in target timezone, then parse it back
-  // This is more reliable than manual offset calculation
-
-  // Create a date at the specified time (in system local time initially)
-  const tempDate = new Date(year, month, day, hour, minute, 0, 0);
-
-  // Format this date in the target timezone to get the correct wall time
-  const timeFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone: config.timezone,
+function getTimeZoneDateParts(date, timeZone = config.timezone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -143,22 +66,34 @@ function createDateFromTimeLabel(timeLabel) {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
-  });
+  }).formatToParts(date);
 
-  // Format as individual parts for accurate parsing
-  const timeParts = timeFormatter.formatToParts(tempDate);
-  const formattedYear = parseInt(timeParts.find(p => p.type === "year").value);
-  const formattedMonth = parseInt(timeParts.find(p => p.type === "month").value) - 1;
-  const formattedDay = parseInt(timeParts.find(p => p.type === "day").value);
-  const formattedHour = parseInt(timeParts.find(p => p.type === "hour").value);
-  const formattedMinute = parseInt(timeParts.find(p => p.type === "minute").value);
-  const formattedSecond = parseInt(timeParts.find(p => p.type === "second").value);
+  return {
+    year: Number.parseInt(parts.find((part) => part.type === "year").value, 10),
+    month: Number.parseInt(parts.find((part) => part.type === "month").value, 10),
+    day: Number.parseInt(parts.find((part) => part.type === "day").value, 10),
+    hour: Number.parseInt(parts.find((part) => part.type === "hour").value, 10),
+    minute: Number.parseInt(parts.find((part) => part.type === "minute").value, 10),
+    second: Number.parseInt(parts.find((part) => part.type === "second").value, 10),
+  };
+}
 
-  // Create the final date using the formatted values
-  // This gives us the correct UTC timestamp that represents the specified time in the target timezone
-  const result = new Date(formattedYear, formattedMonth, formattedDay, formattedHour, formattedMinute, formattedSecond);
+function getTimeZoneOffsetMs(date, timeZone = config.timezone) {
+  const parts = getTimeZoneDateParts(date, timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - date.getTime();
+}
 
-  return result;
+/**
+ * Create a Date object for today at the given time (HH:MM format) in configured timezone
+ * This stays stable even if the VPS runs in a different local timezone.
+ */
+function createDateFromTimeLabel(timeLabel) {
+  const [hour, minute] = timeLabel.split(":").map((value) => Number.parseInt(value, 10));
+  const todayParts = getTimeZoneDateParts(new Date());
+  const utcGuess = Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day, hour, minute, 0, 0);
+  const offsetMs = getTimeZoneOffsetMs(new Date(utcGuess));
+  return new Date(utcGuess - offsetMs);
 }
 
 /**
@@ -466,6 +401,61 @@ function isSessionExpired(session) {
   return Date.now() >= session.endAt.getTime();
 }
 
+function getSessionPhaseLabel(session) {
+  if (session.closed) {
+    return "ditutup";
+  }
+  if (Date.now() < getFinishReminderAt(session).getTime()) {
+    return "berjalan";
+  }
+  if (!session.finishPhaseStarted) {
+    return "mendekati selesai";
+  }
+  if (Date.now() < session.endAt.getTime()) {
+    return "menunggu waktu selesai";
+  }
+  if (session.finishDeadline && Date.now() < session.finishDeadline.getTime()) {
+    return "menunggu konfirmasi selesai";
+  }
+  return "melewati batas konfirmasi";
+}
+
+function canManuallyCloseSession(session) {
+  return Date.now() >= session.endAt.getTime();
+}
+
+function getFinishReminderLeadMs(session) {
+  const configuredLeadMs = config.finishReminderLeadMinutes * 60 * 1000;
+  const sessionDurationMs = Math.max(session.endAt.getTime() - session.startAt.getTime(), 60 * 1000);
+  return Math.min(configuredLeadMs, sessionDurationMs);
+}
+
+function getFinishReminderAt(session) {
+  return new Date(session.endAt.getTime() - getFinishReminderLeadMs(session));
+}
+
+async function beginFinishPhase(session, mode = "finish") {
+  if (session.closed || session.finishPhaseStarted) {
+    return false;
+  }
+
+  session.finishPhaseStarted = true;
+  session.finishDeadline = new Date(session.endAt.getTime() + config.finishGraceMinutes * 60 * 1000);
+  await refreshSessionMessage(session);
+  await sendSessionNotification(session, mode);
+  return true;
+}
+
+async function sendFinishHeadsUp(session) {
+  if (session.closed || session.finishPhaseStarted || session.finishReminderSent) {
+    return false;
+  }
+
+  session.finishReminderSent = true;
+  await sendSessionNotification(session, "finishHeadsUp");
+  return true;
+}
+
 function createStartButtonRow(session, disabled) {
   const button = new ButtonBuilder()
     .setCustomId(`${CHECKIN_BUTTON_PREFIX}${session.sessionId}`)
@@ -507,6 +497,7 @@ function buildSessionMessage(session, mode = "start") {
   const pendingFinishes = getPendingFinishes(session);
   const weekdayLabel = WEEKDAY_ID_LABEL[session.weekdayKey] || session.weekdayKey;
   const headerByMode = {
+    finishHeadsUp: `Reminder akhir ${session.shiftLabel} (${session.startLabel}-${session.endLabel})`,
     start: `📌 ${session.shiftLabel} Dimulai (${session.startLabel}-${session.endLabel})`,
     startReminder: `🔔 Reminder Start ${session.shiftLabel} (${session.startLabel}-${session.endLabel})`,
     finish: `🏁 ${session.shiftLabel} Berakhir (${session.startLabel}-${session.endLabel})`,
@@ -530,6 +521,14 @@ function buildSessionMessage(session, mode = "start") {
 
   if (mode === "finish" || mode === "finishReminder") {
     baseLines.splice(2, 1, "Klik tombol `Selesai` saat shift benar-benar sudah selesai.");
+  } else if (mode === "finishHeadsUp") {
+    baseLines.splice(
+      2,
+      1,
+      `Shift hampir selesai. Siapkan link bukti, tombol \`Selesai\` aktif tepat sekitar ${formatClock(session.endAt)}.`
+    );
+  } else {
+    baseLines.splice(3, 0, `Reminder selesai mulai sekitar ${formatClock(getFinishReminderAt(session))}.`);
   }
 
   return baseLines.join("\n");
@@ -652,11 +651,13 @@ async function sendDirectMessage(userId, payload) {
 }
 
 async function sendSessionNotification(session, mode) {
-  const isFinishMode = mode === "finish" || mode === "finishReminder";
-  const recipients = isFinishMode
+  const isFinishActionMode = mode === "finish" || mode === "finishReminder";
+  const recipients = isFinishActionMode
     ? mode === "finishReminder"
       ? getPendingFinishes(session)
       : session.assignees.filter((assignee) => session.checkins.has(assignee.userId))
+    : mode === "finishHeadsUp"
+      ? session.assignees.filter((assignee) => session.checkins.has(assignee.userId))
     : mode === "startReminder"
       ? getPendingAssignees(session)
       : session.assignees;
@@ -664,11 +665,17 @@ async function sendSessionNotification(session, mode) {
     return;
   }
 
-  const components = [isFinishMode ? createFinishButtonRow(session, false) : createStartButtonRow(session, false)];
+  const components = isFinishActionMode
+    ? [createFinishButtonRow(session, false)]
+    : mode === "finishHeadsUp"
+      ? []
+      : [createStartButtonRow(session, false)];
   const payload = {
     content: buildSessionMessage(session, mode),
-    components,
   };
+  if (components.length > 0) {
+    payload.components = components;
+  }
 
   for (const recipient of recipients) {
     await sendDirectMessage(recipient.userId, payload);
@@ -730,6 +737,18 @@ async function closeSession(session, reason) {
   if (session.reminderInterval) {
     clearInterval(session.reminderInterval);
     session.reminderInterval = null;
+  }
+  if (session.finishPhaseTimeout) {
+    clearTimeout(session.finishPhaseTimeout);
+    session.finishPhaseTimeout = null;
+  }
+  if (session.endTimeout) {
+    clearTimeout(session.endTimeout);
+    session.endTimeout = null;
+  }
+  if (session.finishDeadlineTimeout) {
+    clearTimeout(session.finishDeadlineTimeout);
+    session.finishDeadlineTimeout = null;
   }
 
   const pendingStarts = getPendingAssignees(session);
@@ -818,18 +837,7 @@ async function sendFollowupReminder(session) {
     return;
   }
 
-  const nowMs = Date.now();
-
   if (!session.finishPhaseStarted) {
-    // Trigger finish phase 30 seconds BEFORE end time to ensure users get notified
-    if (nowMs >= (session.endAt.getTime() - FINISH_PHASE_TRIGGER_MS)) {
-      session.finishPhaseStarted = true;
-      // Calculate finish deadline from session END time, not from current time
-      session.finishDeadline = new Date(session.endAt.getTime() + config.finishGraceMinutes * 60 * 1000);
-      await sendSessionNotification(session, "finish");
-      return;
-    }
-
     const pendingStarts = getPendingAssignees(session);
     if (pendingStarts.length > 0) {
       await sendSessionNotification(session, "startReminder");
@@ -839,11 +847,13 @@ async function sendFollowupReminder(session) {
 
   const pendingFinishes = getPendingFinishes(session);
   if (pendingFinishes.length === 0) {
-    await closeSession(session, "all_finished");
+    if (Date.now() >= session.endAt.getTime()) {
+      await closeSession(session, "all_finished");
+    }
     return;
   }
 
-  if (session.finishDeadline && nowMs >= session.finishDeadline.getTime()) {
+  if (session.finishDeadline && Date.now() >= session.finishDeadline.getTime()) {
     await closeSession(session, "finish_window_expired");
     return;
   }
@@ -881,14 +891,56 @@ async function startShiftSession(shiftDef) {
     assignees,
     checkins: new Map(),
     finishes: new Map(),
+    finishReminderSent: false,
     finishPhaseStarted: false,
     finishDeadline: null,
     closed: false,
     reminderInterval: null,
+    finishPhaseTimeout: null,
+    endTimeout: null,
+    finishDeadlineTimeout: null,
   };
 
   activeSessions.set(sessionId, session);
   await sendSessionNotification(session, "start");
+
+  const finishHeadsUpDelayMs = Math.max(getFinishReminderAt(session).getTime() - Date.now(), 0);
+  session.finishPhaseTimeout = setTimeout(() => {
+    sendFinishHeadsUp(session).catch((error) => {
+      console.error(`Gagal kirim heads up finish untuk ${session.sessionId}:`, error);
+    });
+  }, finishHeadsUpDelayMs);
+
+  const endDelayMs = Math.max(session.endAt.getTime() - Date.now(), 0);
+  session.endTimeout = setTimeout(() => {
+    if (session.closed) {
+      return;
+    }
+
+    if (!session.finishPhaseStarted) {
+      beginFinishPhase(session).catch((error) => {
+        console.error(`Gagal memulai fase finish untuk ${session.sessionId} saat jam shift selesai:`, error);
+      });
+    }
+
+    if (getPendingFinishes(session).length === 0) {
+      closeSession(session, "all_finished").catch((error) => {
+        console.error(`Gagal menutup ${session.sessionId} saat jam shift selesai:`, error);
+      });
+    }
+  }, endDelayMs);
+
+  const finishDeadlineAt = new Date(session.endAt.getTime() + config.finishGraceMinutes * 60 * 1000);
+  const finishDeadlineDelayMs = Math.max(finishDeadlineAt.getTime() - Date.now(), 0);
+  session.finishDeadlineTimeout = setTimeout(() => {
+    if (session.closed || !session.finishPhaseStarted) {
+      return;
+    }
+
+    closeSession(session, "finish_window_expired").catch((error) => {
+      console.error(`Gagal menutup ${session.sessionId} setelah grace period:`, error);
+    });
+  }, finishDeadlineDelayMs);
 
   session.reminderInterval = setInterval(() => {
     sendFollowupReminder(session).catch((error) => {
@@ -958,9 +1010,9 @@ async function registerCheckin({ userId, userTag, source, reply }) {
   );
 }
 
-function findCompletableSessionForUser(userId) {
+function findCompletableSessionForUser(userId, sessionId = null) {
   const sessions = Array.from(activeSessions.values())
-    .filter((session) => !session.closed && session.finishPhaseStarted)
+    .filter((session) => !session.closed && session.finishPhaseStarted && (!sessionId || session.sessionId === sessionId))
     .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
 
   for (const session of sessions) {
@@ -983,13 +1035,13 @@ function findCompletableSessionForUser(userId) {
   return null;
 }
 
-async function registerFinish({ userId, userTag, source, proofLink, reply }) {
+async function registerFinish({ userId, userTag, sessionId = null, source, proofLink, reply }) {
   if (!proofLink || !isValidHttpUrl(proofLink)) {
     await reply("🔗 Link bukti tidak valid. Pakai format URL lengkap, contoh: https://contoh.com/bukti");
     return;
   }
 
-  const lookup = findCompletableSessionForUser(userId);
+  const lookup = findCompletableSessionForUser(userId, sessionId);
   if (!lookup) {
     await reply("⏳ Belum ada shift yang bisa ditandai selesai untuk akun kamu.");
     return;
@@ -998,6 +1050,11 @@ async function registerFinish({ userId, userTag, source, proofLink, reply }) {
   const { session, alreadyFinished } = lookup;
   if (alreadyFinished) {
     await reply(`✅ Status selesai kamu untuk ${session.shiftLabel} sudah tercatat.`);
+    return;
+  }
+
+  if (Date.now() < session.endAt.getTime()) {
+    await reply(`⏳ ${session.shiftLabel} belum masuk waktu selesai. Coba lagi sekitar ${formatClock(session.endAt)}.`);
     return;
   }
 
@@ -1022,7 +1079,7 @@ async function registerFinish({ userId, userTag, source, proofLink, reply }) {
   });
 
   const pendingFinishes = getPendingFinishes(session);
-  if (pendingFinishes.length === 0) {
+  if (pendingFinishes.length === 0 && Date.now() >= session.endAt.getTime()) {
     await closeSession(session, "all_finished");
   }
 }
@@ -1709,10 +1766,13 @@ async function handleSlashCommand(interaction) {
       .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
       .map((session) => {
         const pendingCount = getPendingAssignees(session).length;
+        const pendingFinishCount = getPendingFinishes(session).length;
         return [
           `${session.shiftLabel} (${session.startLabel}-${session.endLabel})`,
+          `Fase: ${getSessionPhaseLabel(session)}`,
           buildStatusBlock(session),
-          `Pending: ${pendingCount}`,
+          `Belum start: ${pendingCount}`,
+          `Belum selesai: ${pendingFinishCount}`,
         ].join("\n");
       })
       .join("\n\n");
@@ -1734,15 +1794,29 @@ async function handleSlashCommand(interaction) {
   }
 
   if (interaction.commandName === "shift-done") {
-    // Admin only
     if (!taskHandler.isAdminUser(interaction.user.id)) {
-      await interaction.reply({ content: "⛔ Perintah ini khusus admin.", ephemeral: true });
+      await interaction.reply({ content: "Perintah ini khusus admin.", ephemeral: true });
       return;
     }
 
     const sessions = Array.from(activeSessions.values()).filter((s) => !s.closed);
     if (sessions.length === 0) {
-      await interaction.reply({ content: "ℹ️ Tidak ada shift aktif untuk ditutup.", ephemeral: true });
+      await interaction.reply({ content: "Tidak ada shift aktif untuk ditutup.", ephemeral: true });
+      return;
+    }
+
+    const eligibleSessions = sessions.filter((session) => canManuallyCloseSession(session));
+    const blockedSessions = sessions.filter((session) => !canManuallyCloseSession(session));
+
+    if (eligibleSessions.length === 0) {
+      const blockedText = blockedSessions
+        .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+        .map((session) => `${session.shiftLabel} (${session.startLabel}-${session.endLabel}) masih berjalan`)
+        .join("\n");
+      await interaction.reply({
+        content: `Belum ada shift yang boleh ditutup manual.\n${blockedText}`,
+        ephemeral: true,
+      });
       return;
     }
 
@@ -1751,27 +1825,48 @@ async function handleSlashCommand(interaction) {
     let totalFailed = 0;
     let totalSkipped = 0;
 
-    for (const session of sessions) {
+    for (const session of eligibleSessions) {
       const result = await closeSession(session, "manual_close");
-      if (result.closed) {
-        results.push(`${session.shiftLabel} (${session.dateLabel})`);
-        totalSaved += result.savedCount || 0;
-        totalFailed += result.failedCount || 0;
-        totalSkipped += result.skippedCount || 0;
+      if (!result.closed) {
+        continue;
       }
+
+      results.push(`${session.shiftLabel} (${session.dateLabel})`);
+      totalSaved += result.savedCount || 0;
+      totalFailed += result.failedCount || 0;
+      totalSkipped += result.skippedCount || 0;
     }
 
-    let replyContent = `✅ Shift berikut telah ditutup:\n${results.join("\n")}\n\n`;
-    replyContent += `📊 Sheet: ✅ ${totalSaved} disimpan | ❌ ${totalFailed} gagal | ⏭️ ${totalSkipped} belum start`;
+    const lines = [
+      `Shift berikut telah ditutup:`,
+      results.join("\n"),
+      "",
+      `Sheet: ${totalSaved} disimpan | ${totalFailed} gagal | ${totalSkipped} belum start`,
+    ];
+
+    if (blockedSessions.length > 0) {
+      lines.push("");
+      lines.push("Belum ditutup karena masih berjalan:");
+      lines.push(
+        blockedSessions
+          .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
+          .map((session) => `${session.shiftLabel} (${session.startLabel}-${session.endLabel})`)
+          .join("\n")
+      );
+    }
 
     if (totalFailed > 0 || !sheets.isSheetsConfigured()) {
-      replyContent += "\n\n⚠️ Cek konfigurasi Google Sheets di .env (GSHEET_SPREADSHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY)";
+      lines.push("");
+      lines.push(
+        "Cek konfigurasi Google Sheets di .env (GSHEET_SPREADSHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY)"
+      );
     }
 
     await interaction.reply({
-      content: replyContent,
+      content: lines.join("\n"),
       ephemeral: true,
     });
+    return;
   }
 
   if (interaction.commandName === "debug-time") {
@@ -2126,6 +2221,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     const sessionId = interaction.customId.slice(FINISH_BUTTON_PREFIX.length);
+    const targetSession = activeSessions.get(sessionId);
+    if (!targetSession || targetSession.closed) {
+      await interaction.reply({ content: "⏳ Shift ini sudah ditutup atau tidak aktif lagi.", ephemeral: true });
+      return;
+    }
+
+    if (!targetSession.finishPhaseStarted) {
+      await interaction.reply({
+        content: `⏳ Tombol selesai untuk ${targetSession.shiftLabel} baru aktif sekitar ${formatClock(getFinishReminderAt(targetSession))}.`,
+        ephemeral: true,
+      });
+      return;
+    }
+
     const modal = new ModalBuilder()
       .setCustomId(`${FINISH_MODAL_PREFIX}${sessionId}`)
       .setTitle("Selesaikan Shift");
@@ -2157,6 +2266,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  const modalSessionId = interaction.customId.slice(FINISH_MODAL_PREFIX.length);
   const proofLink = interaction.fields.getTextInputValue("proof_link").trim();
   try {
     await interaction.deferReply({ ephemeral: true });
@@ -2171,6 +2281,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await registerFinish({
       userId: interaction.user.id,
       userTag: interaction.user.tag,
+      sessionId: modalSessionId,
       source: "modal:selesai",
       proofLink,
       reply: async (text) => {

@@ -2,6 +2,7 @@ const OpenAI = require("openai");
 const Anthropic = require("@anthropic-ai/sdk");
 const config = require("./config");
 const sheets = require("./sheets");
+const { getShiftScheduleSummary } = require("./shiftConfig");
 const fs = require("fs");
 const path = require("path");
 
@@ -89,10 +90,10 @@ const DEFAULT_SYSTEM_PROMPT = `Kamu adalah Hina, AI assistant yang ceria, sediki
 - Jangan make up info tentang task/shift user
 
 ## Hal Penting Bot
-- Shift System: 3 shift/hari (09:00-12:00, 12:00-15:00, 16:00-19:00)
+- Shift System: 3 shift/hari (09:00-12:00, 12:00-15:00, 15:00-18:00)
 - Task Management: Assign task dengan deadline
 - Logbook: Harian, di-track per user
-- Check-in: "start" buat mulai, "selesai" buat selesai
+- Check-in: "start" buat mulai, "selesai <link-bukti>" dipakai setelah jam shift berakhir
 
 Ingat: Jadi asisten yang asik, bukan robot kaku! 😜`;
 
@@ -227,6 +228,7 @@ function clearConversationHistory(userId) {
 
 function buildSystemPrompt() {
   const basePrompt = config.aiSystemPrompt || DEFAULT_SYSTEM_PROMPT;
+  const shiftScheduleSummary = getShiftScheduleSummary();
   const now = new Date();
   const currentDate = now.toLocaleDateString('id-ID', {
     weekday: 'long',
@@ -241,7 +243,7 @@ function buildSystemPrompt() {
     timeZone: config.timezone
   });
 
-  return `${basePrompt}\n\n## Tanggal Hari Ini\nHari ini adalah ${currentDate}, jam ${currentTime} (timezone: ${config.timezone}).`;
+  return `${basePrompt}\n\n## Aturan Operasional Shift\n- Jadwal shift yang valid saat ini: ${shiftScheduleSummary}\n- Jangan mengarang status shift user, status selesai, atau status penutupan shift\n- Jangan menyuruh user klik atau ketik "selesai" sebelum jam shift berakhir\n- Kalau user tanya status shift yang sedang berjalan, arahkan cek bot reminder atau command status shift\n\n## Tanggal Hari Ini\nHari ini adalah ${currentDate}, jam ${currentTime} (timezone: ${config.timezone}).`;
 }
 
 async function getUserTasksContext(userId) {

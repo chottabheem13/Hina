@@ -77,6 +77,7 @@ const config = {
   logbookReminderCron: (process.env.LOGBOOK_REMINDER_CRON || "0,30 18-23 * * *").trim(),
   reminderRepeatMinutes: parsePositiveInt(process.env.REMINDER_REPEAT_MINUTES, 10),
   lateAfterMinutes: parsePositiveInt(process.env.LATE_AFTER_MINUTES, 10),
+  finishReminderLeadMinutes: parsePositiveInt(process.env.FINISH_REMINDER_LEAD_MINUTES, 10),
   finishGraceMinutes: parsePositiveInt(process.env.FINISH_GRACE_MINUTES, 30),
   spreadsheetId: (process.env.GSHEET_SPREADSHEET_ID || "").trim(),
   spreadsheetTabName: (process.env.GSHEET_TAB_NAME || "shift_checkins").trim(),
