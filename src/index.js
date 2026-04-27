@@ -2047,9 +2047,7 @@ async function registerSchedules() {
       async () => {
         try {
           // Skip reminder on Sunday (hari minggu/libur)
-          const now = new Date();
-          const dayOfWeek = now.getDay(); // 0 = Sunday
-          if (dayOfWeek === 0) {
+          if (getWeekdayKey() === "sunday") {
             return;
           }
 
