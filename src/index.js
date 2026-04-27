@@ -666,7 +666,7 @@ async function sendSessionNotification(session, mode) {
   }
 
   const components = isFinishActionMode
-    ? [createFinishButtonRow(session, false)]
+    ? [createFinishButtonRow(session, !shouldEnableFinishAction(session))]
     : mode === "finishHeadsUp"
       ? []
       : [createStartButtonRow(session, false)];
@@ -680,6 +680,18 @@ async function sendSessionNotification(session, mode) {
   for (const recipient of recipients) {
     await sendDirectMessage(recipient.userId, payload);
   }
+}
+
+function getSessionMessageMode(session) {
+  if (!session.finishPhaseStarted) {
+    return "start";
+  }
+
+  return Date.now() >= session.endAt.getTime() ? "finish" : "finishHeadsUp";
+}
+
+function shouldEnableFinishAction(session) {
+  return session.finishPhaseStarted && !session.closed && Date.now() >= session.endAt.getTime();
 }
 
 async function appendShiftRecordSafe(record) {
@@ -716,10 +728,13 @@ async function refreshSessionMessage(session) {
 
     const message = await channel.messages.fetch(session.messageId);
     await message.edit({
-      content: buildSessionMessage(session, session.finishPhaseStarted ? "finish" : "start"),
+      content: buildSessionMessage(session, getSessionMessageMode(session)),
       components: [
         session.finishPhaseStarted
-          ? createFinishButtonRow(session, session.closed || getPendingFinishes(session).length === 0)
+          ? createFinishButtonRow(
+              session,
+              session.closed || getPendingFinishes(session).length === 0 || !shouldEnableFinishAction(session)
+            )
           : createStartButtonRow(session, session.closed || getPendingAssignees(session).length === 0),
       ],
     });
@@ -770,9 +785,13 @@ async function closeSession(session, reason) {
 
     let status = "not_finished";
     let checkinAtIso = start.checkedInAt.toISOString();
+    let recordSource = start.source || reason;
     if (finish) {
       status = start.isLate ? "completed_late" : "completed_on_time";
       checkinAtIso = finish.finishedAt.toISOString();
+      recordSource = finish.source || start.source || reason;
+    } else if (reason === "finish_window_expired") {
+      recordSource = "finish_window_expired";
     }
 
     const saved = await appendShiftRecordSafe({
@@ -786,7 +805,7 @@ async function closeSession(session, reason) {
       role: assignee.role,
       status,
       checkinAtIso,
-      source: reason,
+      source: recordSource,
       evidenceLink: finish ? finish.proofLink || "" : "",
     });
     if (saved) {
