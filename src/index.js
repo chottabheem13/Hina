@@ -970,10 +970,10 @@ async function startShiftSession(shiftDef) {
   return { started: true, session };
 }
 
-function findAssignableSessionForUser(userId) {
+function findAssignableSessionForUser(userId, sessionId = null) {
   const sessions = Array.from(activeSessions.values())
-    .filter((session) => !session.closed)
-    .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+    .filter((session) => !session.closed && (!sessionId || session.sessionId === sessionId))
+    .sort((a, b) => b.startAt.getTime() - a.startAt.getTime());
 
   for (const session of sessions) {
     const isAssigned = session.assignees.some((assignee) => assignee.userId === userId);
@@ -993,8 +993,8 @@ function findAssignableSessionForUser(userId) {
   return null;
 }
 
-async function registerCheckin({ userId, userTag, source, reply }) {
-  const lookup = findAssignableSessionForUser(userId);
+async function registerCheckin({ userId, userTag, sessionId = null, source, reply }) {
+  const lookup = findAssignableSessionForUser(userId, sessionId);
   if (!lookup) {
     await reply("⏳ Tidak ada shift aktif untuk akun kamu saat ini.");
     return;
@@ -2221,9 +2221,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         throw error;
       }
       try {
+        const sessionId = interaction.customId.slice(CHECKIN_BUTTON_PREFIX.length);
         await registerCheckin({
           userId: interaction.user.id,
           userTag: interaction.user.tag,
+          sessionId,
           source: "button:start",
           reply: async (text) => {
             try {
