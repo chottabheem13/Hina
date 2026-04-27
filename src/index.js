@@ -52,10 +52,6 @@ const logbookWeeklyStats = new Map(); // Track stats per user per week
 let activeLogbookDayKey = "";
 let activeLogbookWeekKey = "";
 
-function nowInTimezone() {
-  return new Date();
-}
-
 function getTimeZoneDateParts(date, timeZone = config.timezone) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -82,6 +78,21 @@ function getTimeZoneOffsetMs(date, timeZone = config.timezone) {
   const parts = getTimeZoneDateParts(date, timeZone);
   const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
   return asUtc - date.getTime();
+}
+
+function createDateInTimezone(date = new Date(), timeZone = config.timezone) {
+  const parts = getTimeZoneDateParts(date, timeZone);
+  const utcGuess = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second, 0);
+  const offsetMs = getTimeZoneOffsetMs(new Date(utcGuess), timeZone);
+  return new Date(utcGuess - offsetMs);
+}
+
+function nowInTimezone() {
+  return createDateInTimezone(new Date(), config.timezone);
+}
+
+function currentTimeMs() {
+  return nowInTimezone().getTime();
 }
 
 /**
@@ -398,30 +409,30 @@ function getPendingFinishes(session) {
 }
 
 function isSessionExpired(session) {
-  return Date.now() >= session.endAt.getTime();
+  return currentTimeMs() >= session.endAt.getTime();
 }
 
 function getSessionPhaseLabel(session) {
   if (session.closed) {
     return "ditutup";
   }
-  if (Date.now() < getFinishReminderAt(session).getTime()) {
+  if (currentTimeMs() < getFinishReminderAt(session).getTime()) {
     return "berjalan";
   }
   if (!session.finishPhaseStarted) {
     return "mendekati selesai";
   }
-  if (Date.now() < session.endAt.getTime()) {
+  if (currentTimeMs() < session.endAt.getTime()) {
     return "menunggu waktu selesai";
   }
-  if (session.finishDeadline && Date.now() < session.finishDeadline.getTime()) {
+  if (session.finishDeadline && currentTimeMs() < session.finishDeadline.getTime()) {
     return "menunggu konfirmasi selesai";
   }
   return "melewati batas konfirmasi";
 }
 
 function canManuallyCloseSession(session) {
-  return Date.now() >= session.endAt.getTime();
+  return currentTimeMs() >= session.endAt.getTime();
 }
 
 function getFinishReminderLeadMs(session) {
@@ -687,11 +698,11 @@ function getSessionMessageMode(session) {
     return "start";
   }
 
-  return Date.now() >= session.endAt.getTime() ? "finish" : "finishHeadsUp";
+  return currentTimeMs() >= session.endAt.getTime() ? "finish" : "finishHeadsUp";
 }
 
 function shouldEnableFinishAction(session) {
-  return session.finishPhaseStarted && !session.closed && Date.now() >= session.endAt.getTime();
+  return session.finishPhaseStarted && !session.closed && currentTimeMs() >= session.endAt.getTime();
 }
 
 async function appendShiftRecordSafe(record) {
@@ -866,13 +877,13 @@ async function sendFollowupReminder(session) {
 
   const pendingFinishes = getPendingFinishes(session);
   if (pendingFinishes.length === 0) {
-    if (Date.now() >= session.endAt.getTime()) {
+    if (currentTimeMs() >= session.endAt.getTime()) {
       await closeSession(session, "all_finished");
     }
     return;
   }
 
-  if (session.finishDeadline && Date.now() >= session.finishDeadline.getTime()) {
+  if (session.finishDeadline && currentTimeMs() >= session.finishDeadline.getTime()) {
     await closeSession(session, "finish_window_expired");
     return;
   }
@@ -923,14 +934,14 @@ async function startShiftSession(shiftDef) {
   activeSessions.set(sessionId, session);
   await sendSessionNotification(session, "start");
 
-  const finishHeadsUpDelayMs = Math.max(getFinishReminderAt(session).getTime() - Date.now(), 0);
+  const finishHeadsUpDelayMs = Math.max(getFinishReminderAt(session).getTime() - currentTimeMs(), 0);
   session.finishPhaseTimeout = setTimeout(() => {
     sendFinishHeadsUp(session).catch((error) => {
       console.error(`Gagal kirim heads up finish untuk ${session.sessionId}:`, error);
     });
   }, finishHeadsUpDelayMs);
 
-  const endDelayMs = Math.max(session.endAt.getTime() - Date.now(), 0);
+  const endDelayMs = Math.max(session.endAt.getTime() - currentTimeMs(), 0);
   session.endTimeout = setTimeout(() => {
     if (session.closed) {
       return;
@@ -950,7 +961,7 @@ async function startShiftSession(shiftDef) {
   }, endDelayMs);
 
   const finishDeadlineAt = new Date(session.endAt.getTime() + config.finishGraceMinutes * 60 * 1000);
-  const finishDeadlineDelayMs = Math.max(finishDeadlineAt.getTime() - Date.now(), 0);
+  const finishDeadlineDelayMs = Math.max(finishDeadlineAt.getTime() - currentTimeMs(), 0);
   session.finishDeadlineTimeout = setTimeout(() => {
     if (session.closed || !session.finishPhaseStarted) {
       return;
@@ -1072,7 +1083,7 @@ async function registerFinish({ userId, userTag, sessionId = null, source, proof
     return;
   }
 
-  if (Date.now() < session.endAt.getTime()) {
+  if (currentTimeMs() < session.endAt.getTime()) {
     await reply(`⏳ ${session.shiftLabel} belum masuk waktu selesai. Coba lagi sekitar ${formatClock(session.endAt)}.`);
     return;
   }
@@ -1098,7 +1109,7 @@ async function registerFinish({ userId, userTag, sessionId = null, source, proof
   });
 
   const pendingFinishes = getPendingFinishes(session);
-  if (pendingFinishes.length === 0 && Date.now() >= session.endAt.getTime()) {
+  if (pendingFinishes.length === 0 && currentTimeMs() >= session.endAt.getTime()) {
     await closeSession(session, "all_finished");
   }
 }
