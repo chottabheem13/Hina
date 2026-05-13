@@ -1088,6 +1088,13 @@ async function registerFinish({ userId, userTag, sessionId = null, source, proof
     return;
   }
 
+  if (session.finishDeadline && currentTimeMs() >= session.finishDeadline.getTime()) {
+    await reply(
+      `⏳ Window konfirmasi selesai untuk ${session.shiftLabel} sudah lewat (batas: ${formatClock(session.finishDeadline)}). Hubungi admin kalau butuh koreksi.`
+    );
+    return;
+  }
+
   const finishedAt = new Date();
   session.finishes.set(userId, {
     finishedAt,
