@@ -34,6 +34,8 @@ const TASK_DONE_BUTTON_PREFIX = "task-done:";
 const FINISH_MODAL_PREFIX = "shift-finish-modal:";
 const LOGBOOK_DONE_BUTTON_PREFIX = "logbook-done:";
 const FINISH_GIF_URL = "https://media1.tenor.com/m/uCHykOR2BTwAAAAd/girls-band-cry-hina.gif";
+const ETA_UREQ_AUTO_ASSIGN_USER_ID = "1497443437010620446";
+const ETA_UREQ_PATTERN = /\beta\s+ureq\b/i;
 
 const WEEKDAY_ID_LABEL = {
   monday: "Senin",
@@ -51,6 +53,14 @@ const logbookReportedToday = new Set();
 const logbookWeeklyStats = new Map(); // Track stats per user per week
 let activeLogbookDayKey = "";
 let activeLogbookWeekKey = "";
+
+async function resolveTaskAssignee(interaction, description) {
+  if (ETA_UREQ_PATTERN.test(description)) {
+    return client.users.fetch(ETA_UREQ_AUTO_ASSIGN_USER_ID);
+  }
+
+  return interaction.options.getUser("member", false);
+}
 
 function getTimeZoneDateParts(date, timeZone = config.timezone) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -1423,9 +1433,9 @@ function buildAdminSlashCommands() {
         sub
           .setName("assign")
           .setDescription("Assign task ke member (admin only)")
-          .addUserOption((option) => option.setName("member").setDescription("Member yang di-assign").setRequired(true))
           .addStringOption((option) => option.setName("deskripsi").setDescription("Deskripsi task").setRequired(true))
           .addStringOption((option) => option.setName("deadline").setDescription("Deadline (DD/MM HH:MM)").setRequired(true))
+          .addUserOption((option) => option.setName("member").setDescription("Member yang di-assign (opsional untuk ETA UREQ)").setRequired(false))
       )
       .addSubcommand((sub) =>
         sub
@@ -1488,9 +1498,14 @@ async function handleSlashCommand(interaction) {
         return;
       }
 
-      const targetUser = interaction.options.getUser("member", true);
       const description = interaction.options.getString("deskripsi", true);
       const deadlineStr = interaction.options.getString("deadline", true);
+      const targetUser = await resolveTaskAssignee(interaction, description);
+
+      if (!targetUser) {
+        await interaction.reply({ content: "❌ Pilih member yang di-assign, kecuali deskripsi task berisi ETA UREQ.", ephemeral: true });
+        return;
+      }
 
       await taskHandler.assignTask({
         assignedBy: interaction.user.id,
